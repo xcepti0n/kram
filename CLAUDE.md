@@ -10,9 +10,20 @@ Read these before making changes. Keep them current as the code evolves.
 | Document | Contents |
 | --- | --- |
 | `.docs/BRD.md` | Requirements, numbered `FR-*` / `NFR-*` |
-| `.docs/DESIGN.md` | Architecture, component diagram, design decisions `DD-1`…`DD-12` |
-| `.docs/feature/design.md` | API surface, ordering, timeline geometry, theme tokens |
-| `.docs/feature/tasks.md` | Implementation tracker — **update as work completes** |
+| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-19` |
+| `.docs/IMPLEMENTATION.md` | Milestone tracker — **update as work completes** |
+
+Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
+
+| Feature | Covers |
+| --- | --- |
+| `.docs/tasks/` | Task fields, status model, status updates, sorting |
+| `.docs/pages/` | Pages, Overview grouping, LexoRank ordering |
+| `.docs/timeline/` | Scale, segmented lines, points, zoom and pan |
+| `.docs/theme/` | Token system, the three themes, persistence |
+| `.docs/sharing/` | Users, page membership, assignment |
+| `.docs/location/` | Location storage; notifications deferred |
+| `.docs/data/` | SQLite rationale, JSON export and import, migrations |
 
 ## Status
 
@@ -55,25 +66,34 @@ npm start       # production server from dist/
 - **Dates.** `created_on`, `completed_on`, `occurred_on` are calendar dates (`YYYY-MM-DD`, no
   timezone) and are user-editable. `created_at` / `updated_at` are UTC audit timestamps, never
   shown. Do not conflate the two — backfilling depends on the split.
+- **Visibility.** Access resolves through `page_members`, applied in the repository layer and
+  nowhere else. Never write an ad-hoc ownership predicate in a route or service (DD-4, DD-13).
+- **Status.** Four states: `todo`, `in_progress`, `blocked`, `done`. `tasks.status` holds the
+  current value; every transition also writes a dated `status_events` row. Both are written
+  together in the service layer, never independently (DD-15).
+- **Ownership vs. assignment.** `page_members` says who can see a page; `tasks.assigned_to` says
+  whose task it is; `tasks.created_by` records who wrote it down. Three different questions.
 - **Theming.** Components read CSS custom properties only. A hard-coded colour or pixel spacing
   breaks a theme silently; a lint rule enforces this (DD-8).
 - **Mutations.** Optimistic, with cache rollback on failure. Destructive actions are soft deletes
   with an undo toast, never a confirmation dialog (DD-7).
 - **Ordering.** `position` is a LexoRank-style string. Reordering sends neighbour ids, not an
-  index, and writes one row (DD-6).
+  index, and writes one row (DD-6). New tasks append to the **bottom** (DD-18). Manual order is the
+  default sort, not the only one, and is retained under other sorts (DD-17).
 - **Friction.** FR-10 is a hard constraint. A new interaction that adds a step to task creation or
   status updates needs a reason recorded in the design doc.
 
 ## Working agreements
 
 - Commit as work completes, at each committable state.
-- Update `.docs/feature/tasks.md` in the same commit as the work it tracks.
+- Update `.docs/IMPLEMENTATION.md` in the same commit as the work it tracks.
 - Record notable technical choices as a new `DD-*` entry in `.docs/DESIGN.md`.
 - Add or extend a Playwright spec when changing behaviour covered by one.
 - Never add Claude as a commit co-author.
 
 ## Parked
 
-Tag inference (deterministic rules engine preferred over an LLM if revived), location arrival
-notifications, and authentication. The schema already carries `user_id` throughout so auth is
-additive. See the Parked section of the tracker.
+Tag inference (a deterministic rules engine is preferred over an LLM if it is ever revived),
+location arrival notifications, authentication and the page-sharing UI, roles on `page_members`, and
+conditional prioritisation by location or time. The schema already accommodates all of them — see
+the Parked section of `.docs/IMPLEMENTATION.md`.

@@ -2,7 +2,12 @@
 
 **Status:** Approved
 **Last updated:** 2026-09-04
-**Companion documents:** [`BRD.md`](./BRD.md) · [`feature/design.md`](./feature/design.md) · [`feature/tasks.md`](./feature/tasks.md)
+**Companion documents:** [`BRD.md`](./BRD.md) · [`IMPLEMENTATION.md`](./IMPLEMENTATION.md)
+
+**Feature designs:** [`tasks/`](./tasks/design.md) · [`pages/`](./pages/design.md) ·
+[`timeline/`](./timeline/design.md) · [`theme/`](./theme/design.md) ·
+[`sharing/`](./sharing/design.md) · [`location/`](./location/design.md) ·
+[`data/`](./data/design.md)
 
 ---
 
@@ -78,7 +83,8 @@ elaborate would be infrastructure to maintain rather than capability delivered.
 │  │  ┌──────────────────────┐        ┌──────────────────────────────────┐  │  │
 │  │  │   Static file serve  │        │          API routes              │  │  │
 │  │  │  built SPA + assets  │        │  pages · tasks · updates ·       │  │  │
-│  │  │  SPA fallback → /    │        │  reorder · timeline · settings   │  │  │
+│  │  │  SPA fallback → /    │        │  status · reorder · timeline ·   │  │  │
+│  │  │                      │        │  settings · export · import      │  │  │
 │  │  └──────────────────────┘        └───────────────┬──────────────────┘  │  │
 │  │                                                  │                     │  │
 │  │                            ┌─────────────────────▼──────────────────┐  │  │
@@ -144,70 +150,91 @@ POST /api/tasks/:id/updates   { body, occurred_on }
 
 ## 3. Data model
 
+Two ideas shape it. **Visibility belongs to the page**, expressed through a membership table rather
+than an owner column, so a page can later be shared with a second user without migrating anything.
+**Assignment belongs to the task**, so within a shared page it is still clear whose work each item
+is. Today both resolve to one user and neither surfaces in the UI.
+
 ```
-        ┌────────────────┐
-        │     users      │   One row for now. Exists so that multi-user is
-        │────────────────│   additive later rather than a migration (NFR-6.3).
-        │ id       PK    │
-        │ name           │
-        │ created_at     │
-        └───────┬────────┘
-                │ 1
-                │
-                │ ∗
-        ┌───────▼────────┐         ┌──────────────────────────┐
-        │     pages      │         │        settings          │
-        │────────────────│         │──────────────────────────│
-        │ id       PK    │         │ user_id  FK → users      │
-        │ user_id  FK    │         │ theme      calm|bold|dense│
-        │ name           │         │ mode       light|dark|sys │
-        │ colour         │         │ density    comfy|compact  │
-        │ position       │         │ hide_done  bool           │
-        │ created_at     │         └──────────────────────────┘
-        └───────┬────────┘
-                │ 1
-                │
-                │ ∗
-        ┌───────▼──────────────────────┐
-        │            tasks             │
-        │──────────────────────────────│
-        │ id           PK              │
-        │ user_id      FK → users      │
-        │ page_id      FK → pages      │
-        │ title                        │
-        │ description  nullable        │
-        │ colour       auto-assigned   │  FR-5.5
-        │ position     LexoRank string │  FR-7.2
-        │ created_on   DATE            │  FR-2 — editable, may be past
-        │ completed_on DATE nullable   │  FR-4.2 — null means open
-        │ location_label    nullable   │  FR-8.1
-        │ location_lat      nullable   │
-        │ location_lng      nullable   │
-        │ created_at   TIMESTAMP       │  audit, distinct from created_on
-        │ updated_at   TIMESTAMP       │
-        └───────┬──────────────────────┘
-                │ 1
-                │
-                │ ∗
-        ┌───────▼──────────────────────┐
-        │       status_updates         │
-        │──────────────────────────────│
-        │ id           PK              │
-        │ task_id      FK → tasks      │
-        │ body         TEXT            │  FR-3.1 — free text
-        │ occurred_on  DATE            │  FR-3.2 — editable, defaults today
-        │ created_at   TIMESTAMP       │
-        └──────────────────────────────┘
+┌──────────────┐
+│    users     │  One row for now (DD-4).
+│──────────────│
+│ id      PK   │
+│ name         │
+└──┬────────┬──┘
+   │ ∗      │ ∗ created_by / assigned_to
+   │        └───────────────────────────────────────┐
+┌──▼──────────────────┐                             │
+│    page_members     │  Visibility lives here —    │
+│─────────────────────│  a page has many members,   │
+│ page_id  FK  ┐ PK   │  a user belongs to many     │
+│ user_id  FK  ┘      │  pages. No role column yet  │
+│ added_at            │  (DD-13).                   │
+└──┬──────────────────┘                             │
+   │ ∗                                              │
+┌──▼───────────┐         ┌──────────────────────────┼──┐
+│    pages     │         │        settings          │  │
+│──────────────│         │──────────────────────────│  │
+│ id      PK   │         │ user_id  FK → users      │  │
+│ name         │         │ theme    calm|bold|dense │  │
+│ colour       │         │ mode     light|dark|sys  │  │
+│ position     │         │ density  comfy|compact   │  │
+│ created_at   │         │ hide_done  bool          │  │
+└──┬───────────┘         └──────────────────────────┘  │
+   │ 1                                                 │
+   │ ∗                                                 │
+┌──▼─────────────────────────────┐                     │
+│             tasks              │                     │
+│────────────────────────────────│                     │
+│ id           PK                │                     │
+│ page_id      FK → pages        │  visibility         │
+│ created_by   FK → users ───────┼─────────────────────┤  attribution
+│ assigned_to  FK → users, null ─┼─────────────────────┘  whose task it is
+│ title                          │
+│ description  nullable          │
+│ status       todo|in_progress| │  FR-4.1 — blocked is a first-class state
+│              blocked|done      │
+│ colour       auto-assigned     │  FR-5.5
+│ position     LexoRank string   │  FR-7.2 — default sort, not the only one
+│ created_on   DATE              │  FR-2 — editable, may be past
+│ completed_on DATE nullable     │  FR-4.4
+│ location_*   see location/     │  FR-8.1
+│ created_at   TIMESTAMP         │  audit, distinct from created_on
+│ updated_at   TIMESTAMP         │
+│ deleted_at   TIMESTAMP nullable│  soft delete backs undo
+└──┬──────────────────────┬──────┘
+   │ 1                    │ 1
+   │ ∗                    │ ∗
+┌──▼─────────────────┐ ┌──▼──────────────────────┐
+│  status_updates    │ │     status_events       │
+│────────────────────│ │─────────────────────────│
+│ id          PK     │ │ id           PK         │
+│ task_id     FK     │ │ task_id      FK         │
+│ body        TEXT   │ │ status       TEXT       │  the status being entered
+│ occurred_on DATE   │ │ occurred_on  DATE       │  FR-4.3 — editable
+│ created_by  FK     │ │ changed_by   FK → users │
+│ created_at         │ │ created_at             │
+│ deleted_at  null   │ └─────────────────────────┘
+└────────────────────┘
+   free-text notes        state history — drives the
+   (FR-3.1)               timeline's segmented lines
 ```
 
 **`created_on` versus `created_at`.** The first is the user's declared date for when the task began
 and is freely editable, including into the past. The second is an immutable audit timestamp of when
 the row was written. Conflating them would make backfilling impossible; the same split applies to
-`occurred_on` on status updates.
+`occurred_on` on status updates and status events.
 
-**Indexes.** `tasks(user_id, page_id, position)` serves the ordered page list;
-`status_updates(task_id, occurred_on)` serves timeline assembly; `tasks(user_id, created_on)` serves
-the timeline's date-range query.
+**Why two child tables.** A free-text note and a state change are different facts, and most notes
+accompany no state change. Keeping them separate lets the timeline draw segments from
+`status_events` and points from `status_updates` without either concept distorting the other. They
+are still entered together — the update composer carries an optional status selector, so one
+interaction writes both rows.
+
+**Indexes.** `page_members(user_id, page_id)` for the visibility join;
+`tasks(page_id, position)` for the ordered page read; `status_updates(task_id, occurred_on)` and
+`status_events(task_id, occurred_on)` for timeline assembly; `tasks(page_id, created_on)` for the
+timeline's range query.
 
 ## 4. Interface design
 
@@ -296,7 +323,8 @@ runbook record it. Accepted.
 upgrade. The database file falls inside Proxmox's existing LXC snapshots, so backup is already
 solved. `better-sqlite3` is synchronous, which suits this workload and removes a class of async bugs.
 **Cost.** Concurrent writers do not scale. Irrelevant at one user; the repository layer is the only
-code touching SQL, so a port would be contained.
+code touching SQL, so a port would be contained. JSON export (DD-14) provides an engine-independent
+escape hatch if it is ever outgrown.
 
 ### DD-3 — Single process serves API and static assets
 **Decision.** Fastify serves the built SPA and the JSON API on one port.
@@ -305,12 +333,14 @@ splitting paths. Simplifies both deployment and local development.
 **Cost.** Frontend and backend deploy together. For a single-author project that is a feature.
 
 ### DD-4 — Multi-user schema, no authentication yet
-**Decision.** Every user-owned table carries `user_id` from the first migration; a fixed default
-user is resolved server-side. No login screen.
-**Why.** The user asked to build fast but keep the design scalable. Carrying the column is nearly
-free now; retrofitting ownership onto populated tables later is not. Deferring the login UI keeps
-friction at zero.
-**Cost.** A currently meaningless column on every table, and an unused foreign key.
+**Decision.** Visibility is modelled by a `page_members` join table from the first migration, and
+tasks carry `created_by` and `assigned_to`. A fixed default user is resolved server-side. No login
+screen.
+**Why.** The user asked to build fast but keep the design scalable, and specifically to support
+sharing a page between two people. An owner column on each row cannot express that — the page needs
+many members. Carrying the join table now is nearly free; retrofitting it onto populated tables
+later means migrating every row and rewriting every ownership check.
+**Cost.** A join on every read, and a membership table with one row in it for now.
 
 ### DD-5 — SVG timeline, not a charting library
 **Decision.** Hand-rolled inline SVG.
@@ -372,6 +402,68 @@ Shipping a notification feature that silently fails would be worse than not havi
 data now means it accumulates and is ready when a workable trigger exists.
 **Cost.** The location field is inert for now, beyond display and filtering.
 
+### DD-13 — Page membership without roles
+**Decision.** `page_members` has `page_id` and `user_id` and no role column. Every member is equal.
+**Why.** Roles are speculation until there is a second user with a reason to be restricted. The
+table's existence is what makes sharing additive; the role column is a one-line migration with a
+default whenever it is actually wanted.
+**Cost.** No read-only sharing today. Nobody is sharing anything today.
+
+### DD-14 — JSON export and import as a first-class feature
+**Decision.** `GET /api/export` produces the whole dataset as readable JSON; `POST /api/import`
+restores it in merge, replace or duplicate mode, transactionally.
+**Why.** Three things at once: a backup independent of Proxmox, an engine-independent migration path
+if SQLite is ever outgrown, and the assurance that the data is not trapped in a format only this app
+understands. It also answers the main practical objection to SQLite — that nothing external can
+connect to the database.
+**Cost.** A format to version and keep in step with the schema. Mitigated by a round-trip test:
+export, wipe, import, compare.
+
+### DD-15 — Status as a field with dated history
+**Decision.** Four statuses — `todo`, `in_progress`, `blocked`, `done` — with the current value
+denormalised onto `tasks` and every transition recorded in `status_events` with an editable date.
+**Why.** A boolean cannot express `blocked`, and blocked is exactly the state worth seeing: it is
+not an absence of progress but a distinct condition, and *how long* something sat blocked is one of
+the more useful things a timeline can show. Dated events let the timeline draw segmented lines
+rather than a row of dots. Denormalising the current status keeps the common read free of an
+aggregate.
+**Cost.** Two sources of truth for status, kept in step by the service layer, plus a table that
+grows with every transition. Both are cheap; the denormalised column is only ever written alongside
+an event.
+
+### DD-16 — Status events separate from status updates
+**Decision.** Free-text notes (`status_updates`) and state transitions (`status_events`) are
+different tables, entered through one interaction.
+**Why.** They are different facts. Most notes accompany no state change, and a state change often
+needs no note. Merging them would force one concept to carry the other's nullable columns and would
+muddle the timeline, which draws segments from events and points from notes. Keeping the UI unified
+— the update composer has a status selector — means the separation costs the user nothing.
+**Cost.** Two writes for one interaction, inside one transaction.
+
+### DD-17 — Manual order as the default sort, not the only one
+**Decision.** `position` sorts by default; the list also offers creation date, status and title, and
+manual order is always retained.
+**Why.** The user wants conditional prioritisation later — by proximity to a task's location, time
+of day, or weekday. Treating manual order as one sort among several means those arrive as a new sort
+mode plus a scoring function, with no change to storage or list rendering. Retaining `position`
+under other sorts makes switching lossless.
+**Cost.** Drag must be disabled under non-manual sorts, since a drag would have nowhere to persist.
+
+### DD-18 — New tasks append to the bottom
+**Decision.** A new task takes the last position on its page.
+**Why.** The list is worked top-down, so the oldest incomplete task should stay at the top and new
+work queue behind it. An earlier draft put new tasks at the top for visibility; that inverts the
+stated working order and was wrong.
+**Cost.** A newly created task may be below the fold on a long page. The composer sits at the foot
+of the list, so it is created in view.
+
+### DD-19 — One design document per feature
+**Decision.** `.docs/<feature>/design.md`, one folder per feature, rather than a single combined
+document.
+**Why.** Each feature's design is read while working on that feature. A combined document is
+navigated rather than read, and grows into the thing nobody updates.
+**Cost.** Cross-references between documents. Preferable to one that is silently stale.
+
 ## 6. Technology summary
 
 | Layer | Choice | Rationale |
@@ -381,6 +473,7 @@ data now means it accumulates and is ready when a workable trigger exists.
 | Server | Fastify | Fast, small, first-class TypeScript |
 | Database | SQLite + better-sqlite3 | DD-2 |
 | Migrations | Hand-rolled ordered SQL runner | No ORM needed at this size |
+| Portability | JSON export / import | DD-14 |
 | Validation | Zod | DD-9 |
 | Frontend | React 19 + Vite | Fast builds, ordinary tooling |
 | Server state | TanStack Query | Optimistic mutations, cache as truth |
@@ -397,9 +490,14 @@ TaskTracker/
 ├── .docs/
 │   ├── BRD.md               requirements
 │   ├── DESIGN.md            this document
-│   └── feature/
-│       ├── design.md        per-feature technical design
-│       └── tasks.md         implementation tracker
+│   ├── IMPLEMENTATION.md    milestone tracker
+│   ├── tasks/design.md      tasks, status, updates
+│   ├── pages/design.md      pages, overview, ordering
+│   ├── timeline/design.md   the timeline view
+│   ├── theme/design.md      theming and tokens
+│   ├── sharing/design.md    users, membership, assignment
+│   ├── location/design.md   location storage
+│   └── data/design.md       storage, export, import
 ├── server/
 │   ├── src/
 │   │   ├── index.ts         entry, static serving, listen

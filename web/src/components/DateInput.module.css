@@ -1,0 +1,99 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-muted);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  background: var(--surface);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius-sm);
+  transition: border-color var(--motion) var(--motion-ease);
+}
+
+.field:focus-within {
+  border-color: var(--accent);
+}
+
+.field[data-invalid] {
+  border-color: var(--danger);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+.pickerButton {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 26px;
+  margin-right: var(--space-1);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  transition: background var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.pickerButton:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+/* Present for its picker only; the visible affordance is .pickerButton. */
+.nativePicker {
+  position: absolute;
+  right: var(--space-2);
+  bottom: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.inlineValue {
+  padding: 1px var(--space-2);
+  margin-left: calc(var(--space-2) * -1);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  transition: background var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.inlineValue:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.inline .field {
+  background: none;
+}
+
+.hint {
+  font-size: var(--font-size-xs);
+  color: var(--danger);
+}

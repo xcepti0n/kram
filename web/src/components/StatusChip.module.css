@@ -1,0 +1,99 @@
+.root {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2) 2px var(--space-2);
+  border-radius: 999px;
+  border: var(--border-weight) solid transparent;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  transition: background var(--motion) var(--motion-ease), border-color var(--motion) var(--motion-ease);
+}
+
+.chip[data-size='md'] {
+  padding: var(--space-1) var(--space-3);
+  font-size: var(--font-size-sm);
+}
+
+.chip:hover {
+  background: var(--surface-hover);
+  border-color: var(--border);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--status-todo);
+}
+
+[data-status='todo'] .dot { background: var(--status-todo); }
+[data-status='in_progress'] .dot { background: var(--status-in-progress); }
+[data-status='blocked'] .dot { background: var(--status-blocked); }
+[data-status='done'] .dot { background: var(--status-done); }
+
+/* Blocked is the state worth noticing — it gets a ring so it reads as active
+   rather than merely coloured. */
+[data-status='blocked'] .dot {
+  box-shadow: 0 0 0 2.5px color-mix(in srgb, var(--status-blocked) 22%, transparent);
+}
+
+.label {
+  line-height: 1.4;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + var(--space-1));
+  left: 0;
+  z-index: 30;
+  min-width: 150px;
+  padding: var(--space-1);
+  background: var(--surface-raised);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  animation: appear var(--motion) var(--motion-ease);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  text-align: left;
+  transition: background var(--motion) var(--motion-ease);
+}
+
+.option:hover {
+  background: var(--surface-hover);
+}
+
+.option[data-selected] {
+  background: var(--accent-subtle);
+  color: var(--accent-text);
+  font-weight: var(--font-weight-medium);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

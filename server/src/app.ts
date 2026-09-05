@@ -47,9 +47,13 @@ export async function buildApp(options: AppOptions): Promise<App> {
   if (options.serveStatic) {
     const webRoot = findWebRoot();
     if (webRoot) {
-      await server.register(fastifyStatic, { root: webRoot, wildcard: false });
+      // `wildcard: true` lets the plugin serve nested paths such as
+      // /assets/index-*.js. With it off, those fall through to the not-found
+      // handler and are answered with index.html, which the browser then
+      // rejects for having the wrong MIME type — a blank page.
+      await server.register(fastifyStatic, { root: webRoot, wildcard: true });
 
-      // SPA fallback: any non-API path that is not a real file renders the app,
+      // SPA fallback: a non-API path that is not a real file renders the app,
       // so client-side routes survive a refresh.
       server.setNotFoundHandler((request, reply) => {
         if (request.url.startsWith('/api/')) {

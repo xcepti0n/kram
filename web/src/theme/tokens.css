@@ -1,0 +1,317 @@
+/**
+ * Theme tokens (FR-9, DD-8).
+ *
+ * Three axes compose at runtime, set as attributes on <html>:
+ *   data-theme    calm | bold | dense    character: spacing, type, geometry
+ *   data-mode     light | dark | system  colour ramps
+ *   data-density  comfortable | compact  multiplier over spacing
+ *
+ * Components read these variables and never hard-code a value. A single literal
+ * colour silently breaks one theme and nothing else would catch it.
+ */
+
+/* ---------------------------------------------------------- structure --- */
+/* Character tokens. These are what make a theme a different *reading*
+   experience rather than a recolour. */
+
+:root,
+:root[data-theme='calm'] {
+  --space-unit-base: 8px;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --radius-lg: 14px;
+
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
+  --font-size-base: 14.5px;
+  --font-size-sm: 12.5px;
+  --font-size-xs: 11.5px;
+  --font-size-lg: 17px;
+  --font-size-xl: 22px;
+  --font-weight-normal: 420;
+  --font-weight-medium: 530;
+  --font-weight-bold: 640;
+  --letter-spacing-tight: -0.011em;
+  --letter-spacing-wide: 0.04em;
+  --line-height: 1.5;
+
+  --row-height-base: 42px;
+  --border-weight: 1px;
+  --motion: 160ms;
+  --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Timeline geometry — read directly by the SVG renderer. */
+  --line-weight: 2.5px;
+  --point-radius: 5px;
+  --timeline-row-height-base: 40px;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.09), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.16), 0 4px 12px -4px rgb(0 0 0 / 0.08);
+}
+
+:root[data-theme='bold'] {
+  --space-unit-base: 9px;
+  --radius: 14px;
+  --radius-sm: 9px;
+  --radius-lg: 22px;
+
+  --font-size-base: 15.5px;
+  --font-size-sm: 13px;
+  --font-size-xs: 12px;
+  --font-size-lg: 20px;
+  --font-size-xl: 30px;
+  --font-weight-normal: 460;
+  --font-weight-medium: 600;
+  --font-weight-bold: 760;
+  --letter-spacing-tight: -0.025em;
+  --line-height: 1.45;
+
+  --row-height-base: 54px;
+  --border-weight: 1.5px;
+  --motion: 260ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --line-weight: 4px;
+  --point-radius: 7px;
+  --timeline-row-height-base: 54px;
+
+  --shadow-sm: 0 2px 4px rgb(0 0 0 / 0.07);
+  --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.14), 0 3px 6px -3px rgb(0 0 0 / 0.08);
+  --shadow-lg: 0 24px 56px -12px rgb(0 0 0 / 0.22), 0 8px 16px -8px rgb(0 0 0 / 0.12);
+}
+
+:root[data-theme='dense'] {
+  --space-unit-base: 5px;
+  --radius: 4px;
+  --radius-sm: 3px;
+  --radius-lg: 7px;
+
+  --font-size-base: 13px;
+  --font-size-sm: 11.5px;
+  --font-size-xs: 10.5px;
+  --font-size-lg: 14.5px;
+  --font-size-xl: 18px;
+  --font-weight-normal: 420;
+  --font-weight-medium: 550;
+  --font-weight-bold: 660;
+  --letter-spacing-tight: -0.006em;
+  --line-height: 1.4;
+
+  --row-height-base: 28px;
+  --border-weight: 1px;
+  --motion: 90ms;
+  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --line-weight: 1.75px;
+  --point-radius: 3.5px;
+  --timeline-row-height-base: 26px;
+
+  --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 2px 8px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 12px 28px -8px rgb(0 0 0 / 0.16);
+}
+
+/* Density scales the theme's base values.
+ *
+ * The multiplier is a separate token rather than a redefinition of --space-unit
+ * itself: `--x: calc(var(--x) * 0.72)` is a self-reference, which CSS makes
+ * invalid at computed-value time, silently unsetting the token. Deriving the
+ * public token once, from a base and a factor, keeps both axes composable. */
+:root {
+  --density-factor: 1;
+}
+
+:root[data-density='compact'] {
+  --density-factor: 0.76;
+}
+
+/* Public geometry tokens — components read these, never the *-base values. */
+:root {
+  --space-unit: calc(var(--space-unit-base) * var(--density-factor));
+  --row-height: calc(var(--row-height-base) * var(--density-factor));
+  --timeline-row-height: calc(var(--timeline-row-height-base) * var(--density-factor));
+}
+
+/* Derived spacing scale — every margin and padding in the app comes from here. */
+:root {
+  --space-1: calc(var(--space-unit) * 0.5);
+  --space-2: var(--space-unit);
+  --space-3: calc(var(--space-unit) * 1.5);
+  --space-4: calc(var(--space-unit) * 2);
+  --space-5: calc(var(--space-unit) * 3);
+  --space-6: calc(var(--space-unit) * 4);
+  --space-8: calc(var(--space-unit) * 6);
+
+  --sidebar-width: 232px;
+  --sheet-width: 460px;
+}
+
+/* -------------------------------------------------------------- light --- */
+/* Calm's light palette: a warm off-white ground rather than pure white, so long
+   sessions are easier on the eye and elevated surfaces can be brighter, not
+   darker, than the page. */
+
+:root {
+  --ground: #f7f6f4;
+  --surface: #fffefd;
+  --surface-raised: #ffffff;
+  --surface-sunken: #efedea;
+  --surface-hover: #f2f0ed;
+  --surface-active: #eae7e3;
+
+  --text: #1c1b19;
+  --text-secondary: #5f5c57;
+  --text-muted: #8b8781;
+  --text-faint: #b3aea7;
+  --text-on-accent: #ffffff;
+
+  --border: #e3e0dc;
+  --border-strong: #cfcbc5;
+  --border-focus: var(--accent);
+
+  --accent: #3d63dd;
+  --accent-hover: #3355c4;
+  --accent-subtle: #eaefff;
+  --accent-text: #2c4bb8;
+
+  --danger: #c0392f;
+  --danger-subtle: #fdecea;
+  --success: #2f7d54;
+  --warning: #9a6a15;
+
+  --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent);
+  --overlay: rgb(28 27 25 / 0.32);
+
+  /* Status colours. Also encoded by line style on the timeline and by text
+     elsewhere, so colour is never the sole carrier of meaning. */
+  --status-todo: #8b8781;
+  --status-in-progress: #3d63dd;
+  --status-blocked: #c0392f;
+  --status-done: #2f7d54;
+}
+
+/* --------------------------------------------------------------- dark --- */
+/* Not an inversion: dark surfaces sit close together with a slightly desaturated
+   text ramp, which keeps the task colours readable against them. */
+
+:root[data-mode='dark'] {
+  --ground: #16161a;
+  --surface: #1d1e23;
+  --surface-raised: #24252b;
+  --surface-sunken: #131316;
+  --surface-hover: #292a31;
+  --surface-active: #31323a;
+
+  --text: #edecea;
+  --text-secondary: #a8a6a2;
+  --text-muted: #7d7b78;
+  --text-faint: #5a5956;
+  --text-on-accent: #ffffff;
+
+  --border: #2e2f36;
+  --border-strong: #40414a;
+
+  --accent: #7391f5;
+  --accent-hover: #8ba4f7;
+  --accent-subtle: #1e2540;
+  --accent-text: #a3b8f9;
+
+  --danger: #ef6d63;
+  --danger-subtle: #35201e;
+  --success: #5fbb84;
+  --warning: #d0a04a;
+
+  --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent);
+  --overlay: rgb(0 0 0 / 0.55);
+
+  --status-todo: #7d7b78;
+  --status-in-progress: #7391f5;
+  --status-blocked: #ef6d63;
+  --status-done: #5fbb84;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-mode='system'] {
+    --ground: #16161a;
+    --surface: #1d1e23;
+    --surface-raised: #24252b;
+    --surface-sunken: #131316;
+    --surface-hover: #292a31;
+    --surface-active: #31323a;
+
+    --text: #edecea;
+    --text-secondary: #a8a6a2;
+    --text-muted: #7d7b78;
+    --text-faint: #5a5956;
+
+    --border: #2e2f36;
+    --border-strong: #40414a;
+
+    --accent: #7391f5;
+    --accent-hover: #8ba4f7;
+    --accent-subtle: #1e2540;
+    --accent-text: #a3b8f9;
+
+    --danger: #ef6d63;
+    --danger-subtle: #35201e;
+    --success: #5fbb84;
+    --warning: #d0a04a;
+
+    --overlay: rgb(0 0 0 / 0.55);
+
+    --status-todo: #7d7b78;
+    --status-in-progress: #7391f5;
+    --status-blocked: #ef6d63;
+    --status-done: #5fbb84;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Bold leans on a deeper, more saturated ground so the task colours carry. */
+:root[data-theme='bold'] {
+  --ground: #f4f2ef;
+  --accent: #4f3ddd;
+  --accent-hover: #4230c4;
+  --accent-subtle: #ece9ff;
+}
+
+:root[data-theme='bold'][data-mode='dark'] {
+  --ground: #121016;
+  --accent: #9b8bff;
+  --accent-hover: #ab9dff;
+  --accent-subtle: #241d40;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme='bold'][data-mode='system'] {
+    --ground: #121016;
+    --accent: #9b8bff;
+    --accent-hover: #ab9dff;
+    --accent-subtle: #241d40;
+  }
+}
+
+/* ------------------------------------------------------ accessibility --- */
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion: 0ms;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

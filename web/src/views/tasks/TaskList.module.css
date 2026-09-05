@@ -1,0 +1,17 @@
+.root {
+  background: var(--surface);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.list {
+  position: relative;
+}
+
+.empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

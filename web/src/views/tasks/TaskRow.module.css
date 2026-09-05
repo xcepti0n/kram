@@ -1,0 +1,175 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--row-height);
+  padding: 0 var(--space-3);
+  background: var(--surface);
+  border-bottom: var(--border-weight) solid var(--border);
+  cursor: pointer;
+  transition: background var(--motion) var(--motion-ease);
+}
+
+.row:last-child {
+  border-bottom: none;
+}
+
+.row:hover {
+  background: var(--surface-hover);
+}
+
+.row[data-selected] {
+  background: var(--accent-subtle);
+}
+
+.row[data-dragging] {
+  opacity: 0.45;
+  position: relative;
+  z-index: 5;
+}
+
+.row[data-done] .title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+  text-decoration-color: var(--text-faint);
+}
+
+.handle {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.row:hover .handle,
+.handle:focus-visible {
+  opacity: 1;
+}
+
+.handle:hover {
+  color: var(--text-muted);
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+/* Always visible on touch, where there is no hover to reveal it. */
+@media (hover: none) {
+  .handle {
+    opacity: 1;
+  }
+}
+
+.checkbox {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 50%;
+  color: var(--text-on-accent);
+  transition: background var(--motion) var(--motion-ease), border-color var(--motion) var(--motion-ease);
+}
+
+.checkbox:hover {
+  border-color: var(--success);
+}
+
+.checkbox[data-checked] {
+  background: var(--success);
+  border-color: var(--success);
+}
+
+.colour {
+  width: 3px;
+  height: 15px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.location,
+.page {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.pageDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.date {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.delete {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  opacity: 0;
+  transition: opacity var(--motion) var(--motion-ease), background var(--motion) var(--motion-ease),
+    color var(--motion) var(--motion-ease);
+}
+
+.row:hover .delete,
+.delete:focus-visible {
+  opacity: 1;
+}
+
+.delete:hover {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+@media (hover: none) {
+  .delete {
+    opacity: 1;
+  }
+}
+
+/* Narrow screens: drop the secondary metadata rather than crushing the title. */
+@media (max-width: 640px) {
+  .location,
+  .page,
+  .date {
+    display: none;
+  }
+}

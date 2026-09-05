@@ -1,0 +1,209 @@
+import { useState } from 'react';
+import type { Page } from '@tasktracker/shared';
+import styles from './Sidebar.module.css';
+
+export type ViewKey = { kind: 'overview' } | { kind: 'timeline' } | { kind: 'page'; id: string } | { kind: 'settings' };
+
+interface Props {
+  pages: Page[];
+  view: ViewKey;
+  onNavigate: (view: ViewKey) => void;
+  onCreatePage: (name: string) => void;
+  onRenamePage: (id: string, name: string) => void;
+  open: boolean;
+  onClose: () => void;
+}
+
+export function Sidebar({
+  pages,
+  view,
+  onNavigate,
+  onCreatePage,
+  onRenamePage,
+  open,
+  onClose,
+}: Props) {
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+
+  const isActive = (candidate: ViewKey): boolean => {
+    if (candidate.kind !== view.kind) return false;
+    if (candidate.kind === 'page' && view.kind === 'page') return candidate.id === view.id;
+    return true;
+  };
+
+  const submitNew = () => {
+    const trimmed = newName.trim();
+    if (trimmed) onCreatePage(trimmed);
+    setNewName('');
+    setCreating(false);
+  };
+
+  return (
+    <>
+      {open && <div className={styles.scrim} onClick={onClose} aria-hidden="true" />}
+      <nav className={styles.sidebar} data-open={open || undefined} aria-label="Views and pages">
+        <div className={styles.brand}>
+          <span className={styles.mark} aria-hidden="true">
+            <svg viewBox="0 0 20 20" width="17" height="17">
+              <path d="M3 6h6M3 10h10M3 14h7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <circle cx="16" cy="6" r="2.2" fill="currentColor" />
+            </svg>
+          </span>
+          TaskTracker
+        </div>
+
+        <ul className={styles.group}>
+          <li>
+            <button
+              type="button"
+              className={styles.item}
+              data-active={isActive({ kind: 'overview' }) || undefined}
+              onClick={() => onNavigate({ kind: 'overview' })}
+              data-testid="nav-overview"
+            >
+              <Glyph name="overview" />
+              Overview
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              className={styles.item}
+              data-active={isActive({ kind: 'timeline' }) || undefined}
+              onClick={() => onNavigate({ kind: 'timeline' })}
+              data-testid="nav-timeline"
+            >
+              <Glyph name="timeline" />
+              Timeline
+            </button>
+          </li>
+        </ul>
+
+        <div className={styles.sectionHeader}>
+          <span>Pages</span>
+          <button
+            type="button"
+            className={styles.addPage}
+            onClick={() => setCreating(true)}
+            aria-label="New page"
+            data-testid="new-page"
+          >
+            <svg viewBox="0 0 14 14" width="12" height="12" aria-hidden="true">
+              <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </button>
+        </div>
+
+        <ul className={styles.group}>
+          {pages.map((page) => (
+            <li key={page.id}>
+              {renaming === page.id ? (
+                <input
+                  className={styles.renameInput}
+                  value={renameValue}
+                  autoFocus
+                  onChange={(event) => setRenameValue(event.target.value)}
+                  onBlur={() => {
+                    const trimmed = renameValue.trim();
+                    if (trimmed && trimmed !== page.name) onRenamePage(page.id, trimmed);
+                    setRenaming(null);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
+                    else if (event.key === 'Escape') setRenaming(null);
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  className={styles.item}
+                  data-active={isActive({ kind: 'page', id: page.id }) || undefined}
+                  onClick={() => onNavigate({ kind: 'page', id: page.id })}
+                  onDoubleClick={() => {
+                    setRenaming(page.id);
+                    setRenameValue(page.name);
+                  }}
+                  data-testid={`nav-page-${page.name}`}
+                >
+                  <span className={styles.dot} style={{ background: page.colour }} aria-hidden="true" />
+                  <span className={styles.itemLabel}>{page.name}</span>
+                </button>
+              )}
+            </li>
+          ))}
+
+          {creating && (
+            <li>
+              <input
+                className={styles.renameInput}
+                value={newName}
+                placeholder="Page name"
+                autoFocus
+                onChange={(event) => setNewName(event.target.value)}
+                onBlur={submitNew}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') submitNew();
+                  else if (event.key === 'Escape') {
+                    setNewName('');
+                    setCreating(false);
+                  }
+                }}
+                data-testid="new-page-input"
+              />
+            </li>
+          )}
+        </ul>
+
+        <div className={styles.footer}>
+          <button
+            type="button"
+            className={styles.item}
+            data-active={isActive({ kind: 'settings' }) || undefined}
+            onClick={() => onNavigate({ kind: 'settings' })}
+            data-testid="nav-settings"
+          >
+            <Glyph name="settings" />
+            Settings
+          </button>
+        </div>
+      </nav>
+    </>
+  );
+}
+
+function Glyph({ name }: { name: 'overview' | 'timeline' | 'settings' }) {
+  const paths = {
+    overview: (
+      <>
+        <rect x="2.5" y="3" width="11" height="3" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <rect x="2.5" y="9" width="11" height="4" rx="1" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      </>
+    ),
+    timeline: (
+      <>
+        <path d="M2.5 5h7M2.5 11h11" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+        <circle cx="6" cy="5" r="1.8" fill="currentColor" />
+        <circle cx="10.5" cy="11" r="1.8" fill="currentColor" />
+      </>
+    ),
+    settings: (
+      <>
+        <circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+        <path
+          d="M8 1.8v1.6M8 12.6v1.6M14.2 8h-1.6M3.4 8H1.8M12.4 3.6l-1.1 1.1M4.7 11.3l-1.1 1.1M12.4 12.4l-1.1-1.1M4.7 4.7L3.6 3.6"
+          stroke="currentColor"
+          strokeWidth="1.3"
+          strokeLinecap="round"
+        />
+      </>
+    ),
+  };
+  return (
+    <svg viewBox="0 0 16 16" width="15" height="15" className={styles.glyph} aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}

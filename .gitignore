@@ -9,3 +9,4 @@ data/backups/
 test-results/
 playwright-report/
 *.tsbuildinfo
+.playwright-data/

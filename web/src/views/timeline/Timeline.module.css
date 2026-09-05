@@ -1,0 +1,293 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: 0 var(--space-4) var(--space-3);
+  flex-shrink: 0;
+}
+
+.zoomGroup {
+  display: inline-flex;
+  padding: 2px;
+  background: var(--surface-sunken);
+  border-radius: var(--radius);
+}
+
+.zoomButton {
+  padding: var(--space-1) var(--space-3);
+  border-radius: calc(var(--radius) - 2px);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  transition: background var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.zoomButton[data-active] {
+  background: var(--surface-raised);
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+  box-shadow: var(--shadow-sm);
+}
+
+.rightControls {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.todayButton {
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  transition: background var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.todayButton:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--surface);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  margin: 0 var(--space-4);
+}
+
+.svg {
+  display: block;
+  touch-action: pan-y;
+  cursor: grab;
+  user-select: none;
+}
+
+.svg:active {
+  cursor: grabbing;
+}
+
+.empty {
+  padding: var(--space-8) var(--space-4);
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ------------------------------------------------------------- axis --- */
+
+.grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.gridMajor {
+  stroke: var(--border-strong);
+  stroke-width: 1;
+  opacity: 0.7;
+}
+
+.tick {
+  fill: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.tickMajor {
+  fill: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-variant-numeric: tabular-nums;
+}
+
+.todayLine {
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-dasharray: 3 3;
+  opacity: 0.8;
+}
+
+/* ------------------------------------------------------------- rows --- */
+
+.rowHit {
+  fill: transparent;
+}
+
+.taskRow:hover .rowHit {
+  fill: var(--surface-hover);
+  opacity: 0.6;
+}
+
+.nameBand {
+  fill: var(--surface);
+}
+
+.taskRow:hover .nameBand {
+  fill: color-mix(in srgb, var(--surface-hover) 60%, var(--surface));
+}
+
+.taskName {
+  fill: var(--text);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.taskName:hover {
+  fill: var(--accent-text);
+  text-decoration: underline;
+}
+
+.groupBand {
+  fill: var(--surface-sunken);
+}
+
+.groupToggle {
+  cursor: pointer;
+}
+
+.chevron {
+  fill: var(--text-muted);
+}
+
+.groupName {
+  fill: var(--text);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+}
+
+.groupCount {
+  fill: var(--text-faint);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --------------------------------------------------------- segments --- */
+/* Status is carried by line style as well as colour, so it survives both
+   colour-blindness and a greyscale print. */
+
+.segment[data-status='todo'] {
+  opacity: 0.35;
+}
+
+.segment[data-status='in_progress'] {
+  opacity: 1;
+}
+
+.segment[data-status='blocked'] {
+  opacity: 0.55;
+  stroke-dasharray: 2 4;
+}
+
+.segment[data-status='done'] {
+  opacity: 0.75;
+}
+
+.capOpen {
+  opacity: 0.9;
+}
+
+.capDone {
+  opacity: 1;
+}
+
+.point {
+  stroke: var(--surface);
+  stroke-width: 2;
+  cursor: pointer;
+  transition: r var(--motion) var(--motion-ease);
+}
+
+.point:hover,
+.point:focus-visible {
+  stroke: var(--surface);
+  stroke-width: 3;
+}
+
+.clusterCount {
+  fill: var(--surface);
+  font-size: 9px;
+  font-weight: 700;
+  text-anchor: middle;
+  pointer-events: none;
+}
+
+/* ---------------------------------------------------------- overlay --- */
+
+.card {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  z-index: 20;
+  min-width: 160px;
+  max-width: 300px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-raised);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  pointer-events: none;
+  animation: appear 120ms var(--motion-ease);
+}
+
+.cardTitle {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  color: var(--text-muted);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  margin-bottom: var(--space-1);
+}
+
+.cardEntry {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  padding: 1px 0;
+}
+
+.cardDate {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4) 0;
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-100% + 4px));
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -100%);
+  }
+}

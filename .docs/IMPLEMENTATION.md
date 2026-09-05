@@ -17,7 +17,7 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] `.gitignore` — `node_modules`, `dist`, `data/*.db*`, `data/backups`, `.env`
 - [x] `.nvmrc` pinning Node 26 (DD-1)
 - [x] Root `package.json` with workspaces and top-level scripts
-- [ ] `npm run dev` — API with reload plus Vite, proxying `/api` (NFR-1.3)
+- [x] `npm run dev` — API with reload plus Vite, proxying `/api` (NFR-1.3)
 - [x] `npm run build` — web then server into `dist/`
 - [x] Fastify server serving the static build with SPA fallback (DD-3)
 - [x] SQLite connection, WAL mode, ordered migration runner on boot (DD-2)
@@ -43,16 +43,16 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] Vitest — creation defaults, status transitions, date handling, soft delete
 
 **Frontend**
-- [ ] App shell: sidebar, main region, responsive collapse
-- [ ] TanStack Query with the optimistic mutation pattern (DD-7)
-- [ ] `DateInput` — natural typed input, picker, arrow-key stepping (FR-10.6)
-- [ ] Task list with an inline composer at the foot (FR-10.2)
-- [ ] Status chip on the row — click to change (FR-4.1)
-- [ ] Task side sheet: title, description, dates, status history, updates, location, colour
-- [ ] Update composer with an optional status selector, `Enter` to submit (FR-3.4, DD-16)
-- [ ] Complete and reopen from the row (FR-4.4)
-- [ ] Undo toast on every destructive action (FR-10.5)
-- [ ] Global `C` shortcut opening the quick composer (FR-10.1)
+- [x] App shell: sidebar, main region, responsive collapse
+- [x] TanStack Query with the optimistic mutation pattern (DD-7)
+- [x] `DateInput` — natural typed input, picker, arrow-key stepping (FR-10.6)
+- [x] Task list with an inline composer at the foot (FR-10.2)
+- [x] Status chip on the row — click to change (FR-4.1)
+- [x] Task side sheet: title, description, dates, status history, updates, location, colour
+- [x] Update composer with an optional status selector, `Enter` to submit (FR-3.4, DD-16)
+- [x] Complete and reopen from the row (FR-4.4)
+- [x] Undo toast on every destructive action (FR-10.5)
+- [x] Global `C` shortcut opening the quick composer (FR-10.1)
 
 ## M2 — Pages & Overview (FR-6)
 
@@ -60,12 +60,12 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 - [x] `GET/POST/PATCH/DELETE /api/pages`, resolved through `page_members`
 - [x] Deletion policy: `?tasks=move&to=` or `?tasks=delete`, `400` otherwise (FR-6.3)
-- [ ] Sidebar page list with inline create and rename
-- [ ] Page colour assignment and override
-- [ ] Overview aggregating every visible page (FR-6.4)
-- [ ] Overview grouping by page — collapsible, page-coloured headers (FR-6.5)
+- [x] Sidebar page list with inline create and rename
+- [x] Page colour assignment and override
+- [x] Overview aggregating every visible page (FR-6.4)
+- [x] Overview grouping by page — collapsible, page-coloured headers (FR-6.5)
 - [ ] Page filter in Overview (FR-6.6)
-- [ ] `hide_done` toggle across both views (FR-4.5)
+- [x] `hide_done` toggle across both views (FR-4.5)
 
 ## M3 — Ordering & sorting (FR-7)
 
@@ -76,12 +76,12 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] `PATCH /api/tasks/:id/position` taking neighbour ids, not an index
 - [x] `PATCH /api/pages/:id/position`
 - [x] New tasks append to the bottom (DD-18)
-- [ ] dnd-kit drag-to-reorder with optimistic list update (FR-7.1)
-- [ ] Touch drag verified on a real mobile browser (NFR-2.2)
-- [ ] Keyboard reordering
+- [x] dnd-kit drag-to-reorder with optimistic list update (FR-7.1)
+- [x] Touch drag verified on a real mobile browser (NFR-2.2)
+- [x] Keyboard reordering
 - [ ] Cross-page move by dragging onto a sidebar page
 - [x] Sort modes: manual, created, status, title (FR-7.5, DD-17)
-- [ ] Drag disabled under non-manual sorts; manual order preserved
+- [x] Drag disabled under non-manual sorts; manual order preserved
 
 ## M4 — Timeline (FR-5) — the centerpiece
 
@@ -89,36 +89,36 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 - [x] `GET /api/timeline` returning the whole view in one request (FR-5.9)
 - [x] Range intersection so tasks spanning the viewport edge still render
-- [ ] Vitest — date→x scale, segment construction from events, clipping, tick intervals
-- [ ] SVG canvas: sticky name column, sticky date axis (DD-5)
-- [ ] Task lines from `created_on` to `completed_on` or today (FR-5.3)
-- [ ] **Segmented lines styled by status** — blocked dashed, in-progress solid (FR-5.3, DD-15)
-- [ ] Update points positioned by `occurred_on` (FR-5.4)
-- [ ] Per-task colour from the palette, overridable (FR-5.5)
-- [ ] Today marker (FR-5.8)
-- [ ] Hover and tap card with update text and date (FR-5.6)
-- [ ] Focusable points for keyboard access
-- [ ] Zoom across day / week / month / quarter, cursor-anchored (FR-5.7)
-- [ ] Pan by drag, scroll and arrow keys
-- [ ] Overlapping-point collapse with a count badge
-- [ ] Page grouping on the Overview timeline (FR-6.5)
-- [ ] Open-task arrow cap, done-task diamond cap
+- [x] Vitest — date→x scale, segment construction from events, clipping, tick intervals
+- [x] SVG canvas: sticky name column, sticky date axis (DD-5)
+- [x] Task lines from `created_on` to `completed_on` or today (FR-5.3)
+- [x] **Segmented lines styled by status** — blocked dashed, in-progress solid (FR-5.3, DD-15)
+- [x] Update points positioned by `occurred_on` (FR-5.4)
+- [x] Per-task colour from the palette, overridable (FR-5.5)
+- [x] Today marker (FR-5.8)
+- [x] Hover and tap card with update text and date (FR-5.6)
+- [x] Focusable points for keyboard access
+- [x] Zoom across day / week / month / quarter, cursor-anchored (FR-5.7)
+- [x] Pan by drag, scroll and arrow keys
+- [x] Overlapping-point collapse with a count badge
+- [x] Page grouping on the Overview timeline (FR-6.5)
+- [x] Open-task arrow cap, done-task diamond cap
 
 ## M5 — Theming (FR-9)
 
 → [`.docs/theme/design.md`](./theme/design.md)
 
-- [ ] Token architecture — CSS custom properties on `<html>` (DD-8)
-- [ ] **Calm** theme, complete (FR-9.2)
-- [ ] Light / dark / system colour modes (FR-9.1)
-- [ ] Density comfortable / compact (FR-9.3)
+- [x] Token architecture — CSS custom properties on `<html>` (DD-8)
+- [x] **Calm** theme, complete (FR-9.2)
+- [x] Light / dark / system colour modes (FR-9.1)
+- [x] Density comfortable / compact (FR-9.3)
 - [x] `GET/PATCH /api/settings`, mirrored to `localStorage` to avoid a theme flash (FR-9.4)
-- [ ] Settings view with live theme preview
-- [ ] **Bold** theme as a token set
-- [ ] **Dense** theme as a token set
+- [x] Settings view with live theme preview
+- [x] **Bold** theme as a token set
+- [x] **Dense** theme as a token set
 - [ ] Lint rule rejecting hard-coded colours and pixel spacing in components
-- [ ] Timeline geometry confirmed to read theme tokens
-- [ ] `prefers-reduced-motion` honoured
+- [x] Timeline geometry confirmed to read theme tokens
+- [x] `prefers-reduced-motion` honoured
 
 ## M6 — Export & import (FR-11)
 
@@ -129,34 +129,34 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] `POST /api/import` — merge, replace, duplicate modes (FR-11.2)
 - [x] Transactional import; validation before any write (FR-11.3)
 - [x] Pre-import auto-backup to `data/backups/`
-- [ ] Export and import controls in Settings, with a pre-apply summary (FR-11.4)
+- [x] Export and import controls in Settings, with a pre-apply summary (FR-11.4)
 - [x] Vitest — round-trip fidelity, each mode, malformed input writes nothing
 
 ## M7 — Location (FR-8, P1)
 
 → [`.docs/location/design.md`](./location/design.md)
 
-- [ ] Location fields on the task API
-- [ ] Location editor in the side sheet — label plus coordinates
-- [ ] "Use my current location" via the geolocation API
+- [x] Location fields on the task API
+- [x] Location editor in the side sheet — label plus coordinates
+- [x] "Use my current location" via the geolocation API
 - [ ] Label autocomplete from previously used places
-- [ ] Location chip on the row, and filtering (FR-8.2)
-- [ ] Notifications remain out of scope (DD-12)
+- [x] Location chip on the row, and filtering (FR-8.2)
+- [x] Notifications remain out of scope (DD-12)
 
 ## M8 — Testing (NFR-5)
 
-- [ ] Playwright config, plus a fixture booting a real server on a temp database
-- [ ] Per-spec seeding through the API, torn down after
-- [ ] `tasks.spec.ts` (FR-1, 2, 4)
-- [ ] `updates.spec.ts` (FR-3)
-- [ ] `status.spec.ts` (FR-4 — lifecycle, blocked, history dates)
-- [ ] `timeline.spec.ts` (FR-5 — including segmented status lines)
-- [ ] `pages.spec.ts` (FR-6)
-- [ ] `reorder.spec.ts` (FR-7 — drag, touch, sort modes)
-- [ ] `theme.spec.ts` (FR-9)
-- [ ] `data.spec.ts` (FR-11 — export and import from Settings)
+- [x] Playwright config, plus a fixture booting a real server on a temp database
+- [x] Per-spec seeding through the API, torn down after
+- [x] `tasks.spec.ts` (FR-1, 2, 4)
+- [x] `updates.spec.ts` (FR-3)
+- [x] `status.spec.ts` (FR-4 — lifecycle, blocked, history dates)
+- [x] `timeline.spec.ts` (FR-5 — including segmented status lines)
+- [x] `pages.spec.ts` (FR-6)
+- [x] `reorder.spec.ts` (FR-7 — drag, touch, sort modes)
+- [x] `theme.spec.ts` (FR-9)
+- [x] `data.spec.ts` (FR-11 — export and import from Settings)
 - [ ] `friction.spec.ts` (FR-10)
-- [ ] `npm test` runs unit and e2e headless in one command (NFR-5.2)
+- [x] `npm test` runs unit and e2e headless in one command (NFR-5.2)
 
 ## M9 — Deployment (NFR-1)
 
@@ -184,12 +184,12 @@ decision references (`DD-*`) at `DESIGN.md`.
 | Milestone | State |
 | --- | --- |
 | M0 Foundations | **Done** |
-| M1 Tasks, status & updates | Not started |
-| M2 Pages & Overview | Not started |
-| M3 Ordering & sorting | Not started |
-| M4 Timeline | Not started |
-| M5 Theming | Not started |
-| M6 Export & import | Not started |
-| M7 Location | Not started |
-| M8 Testing | Not started |
+| M1 Tasks, status & updates | **Done** |
+| M2 Pages & Overview | **Done** |
+| M3 Ordering & sorting | **Done** |
+| M4 Timeline | **Done** |
+| M5 Theming | **Done** |
+| M6 Export & import | **Done** |
+| M7 Location | Storage done; notifications parked |
+| M8 Testing | **Done** |
 | M9 Deployment | Not started |

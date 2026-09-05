@@ -11,7 +11,13 @@ import { today } from '@tasktracker/shared';
 let server: FastifyInstance;
 let pageId: string;
 
-async function call(method: string, url: string, body?: unknown) {
+/** Call a route and hand back a typed body. Tests assert on shape, so the
+ *  caller names the type it expects rather than casting at every use site. */
+async function call<T = any>(
+  method: string,
+  url: string,
+  body?: unknown,
+): Promise<{ status: number; body: T }> {
   const res = await server.inject({
     method: method as 'GET',
     url,
@@ -19,7 +25,7 @@ async function call(method: string, url: string, body?: unknown) {
   });
   return {
     status: res.statusCode,
-    body: res.body ? (JSON.parse(res.body) as never) : null,
+    body: (res.body ? JSON.parse(res.body) : null) as T,
   };
 }
 

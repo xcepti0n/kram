@@ -1,0 +1,56 @@
+.composer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: var(--row-height);
+  padding: 0 var(--space-3);
+  border-top: var(--border-weight) solid var(--border);
+  background: var(--surface);
+  transition: background var(--motion) var(--motion-ease);
+}
+
+.composer:focus-within {
+  background: var(--surface-raised);
+}
+
+.plus {
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+  transition: color var(--motion) var(--motion-ease);
+}
+
+.composer:focus-within .plus {
+  color: var(--accent);
+}
+
+.input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  padding: var(--space-2) 0;
+  color: var(--text);
+}
+
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+.submit {
+  flex-shrink: 0;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+}
+
+.submit:hover {
+  background: var(--accent-hover);
+}

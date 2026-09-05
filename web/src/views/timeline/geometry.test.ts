@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { daysBetween } from '@tasktracker/shared';
 import {
   buildSegments,
   fitRange,
@@ -156,6 +157,46 @@ describe('ticksFor', () => {
         expect(tick.date >= range.from && tick.date <= range.to).toBe(true);
       }
     }
+  });
+
+  /* Labels are thinned to the plot width. The rule has to hold in pixels, not
+     in tick indices: an earlier version kept every major tick unconditionally
+     and let a month boundary land beside an already-kept label. */
+  it('keeps labelled ticks at least a label-width apart at any plot width', () => {
+    const MIN_SPACING = 54;
+    const range = { from: '2026-06-22', to: '2026-09-11' };
+
+    for (const width of [180, 240, 320, 480, 760, 1200]) {
+      for (const level of ['day', 'week', 'month', 'quarter'] as const) {
+        const ticks = ticksFor(range, level, width);
+        const span = daysBetween(range.from, range.to);
+        const xs = ticks
+          .filter((tick) => tick.label !== '')
+          .map((tick) => (daysBetween(range.from, tick.date) / span) * width);
+
+        for (let i = 1; i < xs.length; i += 1) {
+          expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(MIN_SPACING);
+        }
+      }
+    }
+  });
+
+  it('drops a label rather than a gridline when thinning', () => {
+    const range = { from: '2026-06-22', to: '2026-09-11' };
+    const full = ticksFor(range, 'week');
+    const thinned = ticksFor(range, 'week', 200);
+
+    expect(thinned).toHaveLength(full.length);
+    expect(thinned.some((tick) => tick.label === '')).toBe(true);
+  });
+
+  it('prefers a month boundary over an ordinary tick when only one fits', () => {
+    // 7 Sep is a month boundary; 31 Aug is not. At this width only one label
+    // fits in that region, and it should be the one that carries more meaning.
+    const ticks = ticksFor({ from: '2026-06-22', to: '2026-09-11' }, 'week', 220);
+    const labelled = ticks.filter((tick) => tick.label !== '');
+    expect(labelled.every((tick) => tick.label.length > 0)).toBe(true);
+    expect(labelled.some((tick) => tick.major)).toBe(true);
   });
 });
 

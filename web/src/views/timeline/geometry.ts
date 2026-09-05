@@ -135,20 +135,46 @@ const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
  */
 export function ticksFor(range: DateRange, level: ZoomLevel, plotWidth?: number): Tick[] {
   const ticks = allTicks(range, level);
-  if (plotWidth === undefined) return ticks;
+  if (plotWidth === undefined || ticks.length === 0) return ticks;
 
   // Roughly the width of a label plus breathing room.
   const MIN_LABEL_SPACING = 54;
-  const affordable = Math.max(2, Math.floor(plotWidth / MIN_LABEL_SPACING));
-  if (ticks.length <= affordable) return ticks;
 
-  // Keep every nth label, preferring major ticks so month and year boundaries
-  // survive the thinning.
-  const stride = Math.ceil(ticks.length / affordable);
-  return ticks.map((tick, index) => {
-    const keep = tick.major || index % stride === 0;
-    return keep ? tick : { ...tick, label: '' };
+  // Thin by *position*, not by index. An earlier version kept every major tick
+  // unconditionally and strided the rest, which let a month boundary land a few
+  // pixels from an already-kept label — "31 Aug" and "7 Sep" overlapped on a
+  // phone. Walking left to right and keeping a label only when it clears the
+  // last one makes collisions impossible at any width, since the rule is stated
+  // in the units the collision actually happens in.
+  const span = Math.max(1, daysBetween(range.from, range.to));
+  const xOf = (date: string) => (daysBetween(range.from, date) / span) * plotWidth;
+
+  // Major ticks (month and year boundaries) are placed first so they survive
+  // thinning, then the minor ones fill whatever gaps are left. Both passes obey
+  // the same spacing rule, so priority never buys a collision.
+  const keep = new Set<number>();
+  const kept: number[] = [];
+  const clears = (x: number) => kept.every((k) => Math.abs(x - k) >= MIN_LABEL_SPACING);
+
+  ticks.forEach((tick, index) => {
+    if (!tick.major) return;
+    const x = xOf(tick.date);
+    if (clears(x)) {
+      keep.add(index);
+      kept.push(x);
+    }
   });
+
+  ticks.forEach((tick, index) => {
+    if (tick.major) return;
+    const x = xOf(tick.date);
+    if (clears(x)) {
+      keep.add(index);
+      kept.push(x);
+    }
+  });
+
+  return ticks.map((tick, index) => (keep.has(index) ? tick : { ...tick, label: '' }));
 }
 
 function allTicks(range: DateRange, level: ZoomLevel): Tick[] {

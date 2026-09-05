@@ -54,11 +54,36 @@ mkdir -p /opt/kram/data
 
 `--system` gives a no-login account; the app never needs an interactive shell.
 
-## 4. First deploy
+## 4. Get the code onto the container
+
+Either works. Use **A** if the repo is on GitHub, **B** if it is still only on your laptop.
+
+**A — from a git remote:**
 
 ```bash
 cd /opt/kram
-git clone https://github.com/vaiibhav/kram.git .
+git clone <your-repo-url> .
+```
+
+**B — straight from your laptop, no GitHub needed.** Run this *on the laptop*, from the repo:
+
+```bash
+# Push the working tree into the container. Excludes what the container rebuilds.
+rsync -av --delete \
+  --exclude node_modules --exclude dist --exclude dist-types \
+  --exclude data --exclude .playwright-data --exclude test-results \
+  ./ root@<container-ip>:/opt/kram/
+```
+
+If you do not have `rsync` in the container, `apt install -y rsync` there first. Without a remote,
+updating later means re-running this command rather than `git pull`.
+
+## 5. Build
+
+Back on the container:
+
+```bash
+cd /opt/kram
 npm ci
 npm run build
 chown -R kram:kram /opt/kram
@@ -68,7 +93,10 @@ chown -R kram:kram /opt/kram
 them afterwards with `npm prune --omit=dev` if you care about the ~200 MB; the next deploy's
 `npm ci` restores them.
 
-## 5. Configure and start
+Expect `npm ci` to finish without invoking a compiler. If it tries to build a native addon,
+something has pulled in a dependency that defeats the point of DD-20.
+
+## 6. Configure and start
 
 ```bash
 cp deploy/kram.env.example /etc/kram.env
@@ -88,11 +116,18 @@ curl -s localhost:4310/api/health           # {"status":"ok"}
 
 Then open `http://<container-ip>:4310` from your laptop or phone.
 
-## 6. Updating
+## 7. Updating
+
+Whichever way you got the code there in step 4:
 
 ```bash
+# A — if you cloned from a remote:
+cd /opt/kram && git pull
+
+# B — if you rsync'd: re-run the rsync from your laptop, then continue here.
+
+# Both, on the container:
 cd /opt/kram
-git pull
 npm ci
 npm run build
 systemctl restart kram
@@ -102,7 +137,7 @@ Migrations apply on boot, inside `openDatabase`, before the server accepts conne
 deploy that changes the schema needs no separate step and has no window where the port answers with
 a half-migrated database. There is a test for exactly that (`server/src/deploy.test.ts`).
 
-Run it as the service user if you prefer not to `chown` afterwards:
+With the git path you can pull as the service user, avoiding another `chown`:
 
 ```bash
 sudo -u kram git -C /opt/kram pull

@@ -1,6 +1,5 @@
 [Unit]
 Description=Kram — personal task tracker
-Documentation=https://github.com/vaiibhav/kram
 # Ordering only. The app owns a local SQLite file and needs no network peer, so
 # this must not be a hard dependency: a boot with the network still settling
 # should still bring the app up.

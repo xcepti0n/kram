@@ -10,7 +10,7 @@ Read these before making changes. Keep them current as the code evolves.
 | Document | Contents |
 | --- | --- |
 | `.docs/BRD.md` | Requirements, numbered `FR-*` / `NFR-*` |
-| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-19` |
+| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-20` |
 | `.docs/IMPLEMENTATION.md` | Milestone tracker — **update as work completes** |
 
 Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
@@ -31,7 +31,7 @@ Design complete; implementation not started. Next up is M0 (Foundations) in the 
 
 ## Stack
 
-Node 26 · TypeScript strict · Fastify · SQLite (`better-sqlite3`) · React 19 + Vite ·
+Node 26 · TypeScript strict · Fastify · SQLite (built-in `node:sqlite`, DD-20) · React 19 + Vite ·
 TanStack Query · dnd-kit · CSS Modules · Playwright + Vitest.
 
 One Node process serves the API and the built SPA on a single port. No Docker — it runs under
@@ -61,6 +61,8 @@ npm start       # production server from dist/
 
 - **Layering.** Routes validate and delegate; services hold business rules; repositories hold every
   line of SQL. Do not query the database from a route.
+- **Database access.** Through `server/src/db/sqlite.ts`, which adapts `node:sqlite` to the small
+  surface the app uses. No native addon, so `npm ci` needs no compiler (DD-20).
 - **Validation.** Zod schemas live in `shared/` and are used by both sides. Types are inferred from
   them, never hand-written alongside.
 - **Dates.** `created_on`, `completed_on`, `occurred_on` are calendar dates (`YYYY-MM-DD`, no

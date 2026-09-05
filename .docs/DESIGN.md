@@ -457,6 +457,18 @@ stated working order and was wrong.
 **Cost.** A newly created task may be below the fold on a long page. The composer sits at the foot
 of the list, so it is created in view.
 
+### DD-20 — `node:sqlite` rather than `better-sqlite3`
+**Decision.** Use Node's built-in `node:sqlite` module through a thin adapter
+(`server/src/db/sqlite.ts`) exposing the small surface the app needs.
+**Why.** `better-sqlite3` is a native addon: it has no prebuilt binary for Node 26 and fails to
+compile against the current V8 API, so installing it needs a C++ toolchain, Python and node-gyp.
+That directly contradicts NFR-1 — deployment on the Proxmox LXC should be `npm ci` and nothing
+else. `node:sqlite` ships with the runtime, so there is no build step, no compiler on the LXC, and
+no native module to rebuild after a Node upgrade. It is the same SQLite underneath.
+**Cost.** `node:sqlite` has no `.transaction()` helper and rejects `undefined` bindings, so the
+adapter supplies both (savepoints for nesting, plus binding normalisation). Roughly 100 lines, and
+it confines the difference to one file — swapping back later would be a change to that file alone.
+
 ### DD-19 — One design document per feature
 **Decision.** `.docs/<feature>/design.md`, one folder per feature, rather than a single combined
 document.

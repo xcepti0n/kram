@@ -12,35 +12,35 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 ## M0 — Foundations
 
-- [ ] Repo scaffold: `server/`, `web/`, `shared/`, `e2e/`, `deploy/`, `data/`
-- [ ] TypeScript strict config with project references across the three packages
-- [ ] `.gitignore` — `node_modules`, `dist`, `data/*.db*`, `data/backups`, `.env`
-- [ ] `.nvmrc` pinning Node 26 (DD-1)
-- [ ] Root `package.json` with workspaces and top-level scripts
+- [x] Repo scaffold: `server/`, `web/`, `shared/`, `e2e/`, `deploy/`, `data/`
+- [x] TypeScript strict config with project references across the three packages
+- [x] `.gitignore` — `node_modules`, `dist`, `data/*.db*`, `data/backups`, `.env`
+- [x] `.nvmrc` pinning Node 26 (DD-1)
+- [x] Root `package.json` with workspaces and top-level scripts
 - [ ] `npm run dev` — API with reload plus Vite, proxying `/api` (NFR-1.3)
-- [ ] `npm run build` — web then server into `dist/`
-- [ ] Fastify server serving the static build with SPA fallback (DD-3)
-- [ ] SQLite connection, WAL mode, ordered migration runner on boot (DD-2)
-- [ ] Migration 001 — `users`, `page_members`, `pages`, `tasks`, `status_updates`,
+- [x] `npm run build` — web then server into `dist/`
+- [x] Fastify server serving the static build with SPA fallback (DD-3)
+- [x] SQLite connection, WAL mode, ordered migration runner on boot (DD-2)
+- [x] Migration 001 — `users`, `page_members`, `pages`, `tasks`, `status_updates`,
       `status_events`, `settings`, with indexes (DD-4, DD-13, DD-15)
-- [ ] Seed the default user, a first page, and its membership row
-- [ ] Health endpoint `GET /api/health`
+- [x] Seed the default user, a first page, and its membership row
+- [x] Health endpoint `GET /api/health`
 
 ## M1 — Tasks, status & updates (FR-1, 2, 3, 4)
 
 → [`.docs/tasks/design.md`](./tasks/design.md)
 
 **Backend**
-- [ ] Zod schemas in `shared/` for task, update, status event, page, settings (DD-9)
-- [ ] Repository layer — all SQL confined here, visibility join applied uniformly
-- [ ] Service layer — creation defaults, status transitions, soft delete
-- [ ] `GET/POST/PATCH/DELETE /api/tasks`, defaults applied server-side (FR-1.1, 2.1)
-- [ ] `PATCH /api/tasks/:id/status` writing a `status_events` row (FR-4.3, DD-15)
-- [ ] Creation writes the initial `todo` event dated `created_on`
-- [ ] `POST /api/tasks/:id/updates`, optionally carrying a status change (DD-16)
-- [ ] `PATCH`/`DELETE /api/updates/:id`, `PATCH /api/status-events/:id`
-- [ ] Soft delete with a 30-day purge on boot (FR-10.5)
-- [ ] Vitest — creation defaults, status transitions, date handling, soft delete
+- [x] Zod schemas in `shared/` for task, update, status event, page, settings (DD-9)
+- [x] Repository layer — all SQL confined here, visibility join applied uniformly
+- [x] Service layer — creation defaults, status transitions, soft delete
+- [x] `GET/POST/PATCH/DELETE /api/tasks`, defaults applied server-side (FR-1.1, 2.1)
+- [x] `PATCH /api/tasks/:id/status` writing a `status_events` row (FR-4.3, DD-15)
+- [x] Creation writes the initial `todo` event dated `created_on`
+- [x] `POST /api/tasks/:id/updates`, optionally carrying a status change (DD-16)
+- [x] `PATCH`/`DELETE /api/updates/:id`, `PATCH /api/status-events/:id`
+- [x] Soft delete with a 30-day purge on boot (FR-10.5)
+- [x] Vitest — creation defaults, status transitions, date handling, soft delete
 
 **Frontend**
 - [ ] App shell: sidebar, main region, responsive collapse
@@ -58,8 +58,8 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 → [`.docs/pages/design.md`](./pages/design.md)
 
-- [ ] `GET/POST/PATCH/DELETE /api/pages`, resolved through `page_members`
-- [ ] Deletion policy: `?tasks=move&to=` or `?tasks=delete`, `400` otherwise (FR-6.3)
+- [x] `GET/POST/PATCH/DELETE /api/pages`, resolved through `page_members`
+- [x] Deletion policy: `?tasks=move&to=` or `?tasks=delete`, `400` otherwise (FR-6.3)
 - [ ] Sidebar page list with inline create and rename
 - [ ] Page colour assignment and override
 - [ ] Overview aggregating every visible page (FR-6.4)
@@ -71,24 +71,24 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 → [`.docs/pages/design.md`](./pages/design.md)
 
-- [ ] LexoRank key generation and rebalancing in `shared/` (DD-6)
-- [ ] Vitest — midpoint generation, boundaries, rebalance trigger
-- [ ] `PATCH /api/tasks/:id/position` taking neighbour ids, not an index
-- [ ] `PATCH /api/pages/:id/position`
-- [ ] New tasks append to the bottom (DD-18)
+- [x] LexoRank key generation and rebalancing in `shared/` (DD-6)
+- [x] Vitest — midpoint generation, boundaries, rebalance trigger
+- [x] `PATCH /api/tasks/:id/position` taking neighbour ids, not an index
+- [x] `PATCH /api/pages/:id/position`
+- [x] New tasks append to the bottom (DD-18)
 - [ ] dnd-kit drag-to-reorder with optimistic list update (FR-7.1)
 - [ ] Touch drag verified on a real mobile browser (NFR-2.2)
 - [ ] Keyboard reordering
 - [ ] Cross-page move by dragging onto a sidebar page
-- [ ] Sort modes: manual, created, status, title (FR-7.5, DD-17)
+- [x] Sort modes: manual, created, status, title (FR-7.5, DD-17)
 - [ ] Drag disabled under non-manual sorts; manual order preserved
 
 ## M4 — Timeline (FR-5) — the centerpiece
 
 → [`.docs/timeline/design.md`](./timeline/design.md)
 
-- [ ] `GET /api/timeline` returning the whole view in one request (FR-5.9)
-- [ ] Range intersection so tasks spanning the viewport edge still render
+- [x] `GET /api/timeline` returning the whole view in one request (FR-5.9)
+- [x] Range intersection so tasks spanning the viewport edge still render
 - [ ] Vitest — date→x scale, segment construction from events, clipping, tick intervals
 - [ ] SVG canvas: sticky name column, sticky date axis (DD-5)
 - [ ] Task lines from `created_on` to `completed_on` or today (FR-5.3)
@@ -112,7 +112,7 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [ ] **Calm** theme, complete (FR-9.2)
 - [ ] Light / dark / system colour modes (FR-9.1)
 - [ ] Density comfortable / compact (FR-9.3)
-- [ ] `GET/PATCH /api/settings`, mirrored to `localStorage` to avoid a theme flash (FR-9.4)
+- [x] `GET/PATCH /api/settings`, mirrored to `localStorage` to avoid a theme flash (FR-9.4)
 - [ ] Settings view with live theme preview
 - [ ] **Bold** theme as a token set
 - [ ] **Dense** theme as a token set
@@ -124,13 +124,13 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 → [`.docs/data/design.md`](./data/design.md)
 
-- [ ] `GET /api/export` — full dataset, children nested, `?download=1` (FR-11.1)
-- [ ] `?include_deleted=1` for a full-fidelity backup
-- [ ] `POST /api/import` — merge, replace, duplicate modes (FR-11.2)
-- [ ] Transactional import; validation before any write (FR-11.3)
-- [ ] Pre-import auto-backup to `data/backups/`
+- [x] `GET /api/export` — full dataset, children nested, `?download=1` (FR-11.1)
+- [x] `?include_deleted=1` for a full-fidelity backup
+- [x] `POST /api/import` — merge, replace, duplicate modes (FR-11.2)
+- [x] Transactional import; validation before any write (FR-11.3)
+- [x] Pre-import auto-backup to `data/backups/`
 - [ ] Export and import controls in Settings, with a pre-apply summary (FR-11.4)
-- [ ] Vitest — round-trip fidelity, each mode, malformed input writes nothing
+- [x] Vitest — round-trip fidelity, each mode, malformed input writes nothing
 
 ## M7 — Location (FR-8, P1)
 
@@ -183,7 +183,7 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 | Milestone | State |
 | --- | --- |
-| M0 Foundations | Not started |
+| M0 Foundations | **Done** |
 | M1 Tasks, status & updates | Not started |
 | M2 Pages & Overview | Not started |
 | M3 Ordering & sorting | Not started |

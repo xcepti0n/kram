@@ -23,7 +23,7 @@ import {
   type TaskStatus,
   type TaskWithChildren,
   type UpdateTaskInput,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
 

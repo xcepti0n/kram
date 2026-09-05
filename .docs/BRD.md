@@ -1,4 +1,4 @@
-# Business Requirements Document — TaskTracker
+# Business Requirements Document — Kram
 
 **Status:** Approved
 **Last updated:** 2026-09-04
@@ -149,7 +149,7 @@ This is a cross-cutting requirement, not a feature. It constrains every other re
 ### NFR-1 — Deployment (Proxmox)
 - NFR-1.1 Runs as a plain Node process under systemd inside a Proxmox LXC. No Docker — the LXC is
   already the container boundary; nesting adds a daemon and an image pipeline for no benefit.
-- NFR-1.2 Deployment is `git pull && npm ci && npm run build && systemctl restart tasktracker`.
+- NFR-1.2 Deployment is `git pull && npm ci && npm run build && systemctl restart kram`.
 - NFR-1.3 One command starts a full dev environment locally.
 - NFR-1.4 The database is a single file, backed up by Proxmox's existing LXC snapshots, and
   additionally exportable as JSON (FR-11).

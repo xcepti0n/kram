@@ -6,7 +6,7 @@
  * alone.
  */
 import { useEffect, useRef, useState } from 'react';
-import { TASK_STATUSES, type TaskStatus } from '@tasktracker/shared';
+import { TASK_STATUSES, type TaskStatus } from '@kram/shared';
 import styles from './StatusChip.module.css';
 
 export const STATUS_LABEL: Record<TaskStatus, string> = {

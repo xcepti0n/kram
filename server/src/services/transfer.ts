@@ -15,7 +15,7 @@ import {
   exportDocument,
   type ExportDocument,
   type ImportMode,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import type { DB } from '../db/index.js';
 import { BadRequest } from './tasks.js';
 

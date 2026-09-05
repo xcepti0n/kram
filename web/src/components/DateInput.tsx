@@ -9,7 +9,7 @@
  * guessing, so a typo never silently changes a date.
  */
 import { useEffect, useRef, useState } from 'react';
-import { addDays, formatDate, isIsoDate, parseDateInput, today } from '@tasktracker/shared';
+import { addDays, formatDate, isIsoDate, parseDateInput, today } from '@kram/shared';
 import styles from './DateInput.module.css';
 
 interface Props {

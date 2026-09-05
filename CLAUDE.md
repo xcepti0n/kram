@@ -1,4 +1,4 @@
-# CLAUDE.md — TaskTracker
+# CLAUDE.md — Kram
 
 Personal task tracker whose centerpiece is a **timeline view**: each task is a horizontal line on a
 calendar axis, with a point for every status update.
@@ -63,6 +63,10 @@ npm start       # production server from dist/
 
 - **Layering.** Routes validate and delegate; services hold business rules; repositories hold every
   line of SQL. Do not query the database from a route.
+- **Never name persisted things after the product.** The database file (`app.db`), the export
+  format discriminator (`task-timeline.export.v1`) and the `localStorage` key (`app.settings`) are
+  named for what they *are*. A product rename must never strand a user's data, so anything already
+  written under an older name is adopted on read and listed in the legacy constants — never dropped.
 - **Database access.** Through `server/src/db/sqlite.ts`, which adapts `node:sqlite` to the small
   surface the app uses. No native addon, so `npm ci` needs no compiler (DD-20).
 - **Validation.** Zod schemas live in `shared/` and are used by both sides. Types are inferred from

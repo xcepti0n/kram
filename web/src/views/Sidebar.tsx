@@ -14,7 +14,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { Page } from '@tasktracker/shared';
+import type { Page } from '@kram/shared';
 import { SidebarPage } from './SidebarPage.js';
 import styles from './Sidebar.module.css';
 
@@ -122,7 +122,7 @@ export function Sidebar({
               <circle cx="16" cy="6" r="2.2" fill="currentColor" />
             </svg>
           </span>
-          TaskTracker
+          Kram
         </div>
 
         <ul className={styles.group}>

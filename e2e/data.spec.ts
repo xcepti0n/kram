@@ -1,4 +1,5 @@
 import { createTask, expect, ready, test } from './fixtures.js';
+import { EXPORT_FORMAT } from '@kram/shared';
 
 test.describe('export and import (FR-11)', () => {
   test('exports the whole dataset as a downloadable file', async ({ page, request, seeded }) => {
@@ -11,14 +12,14 @@ test.describe('export and import (FR-11)', () => {
       page.waitForEvent('download'),
       page.getByTestId('export-button').click(),
     ]);
-    expect(download.suggestedFilename()).toMatch(/^tasktracker-\d{4}-\d{2}-\d{2}\.json$/);
+    expect(download.suggestedFilename()).toMatch(/^kram-\d{4}-\d{2}-\d{2}\.json$/);
   });
 
   test('round-trips data through export and import', async ({ page, request, seeded }) => {
     await createTask(request, { title: 'Round trip me', created_on: '2026-08-12' });
 
     const doc = await (await request.get('/api/export')).json();
-    expect(doc.format).toBe('tasktracker.export');
+    expect(doc.format).toBe(EXPORT_FORMAT);
     expect(doc.tasks).toHaveLength(1);
 
     // Wipe, then restore from the file.

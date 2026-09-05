@@ -1,5 +1,5 @@
 {
-  "name": "@tasktracker/web",
+  "name": "@kram/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,7 +14,7 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "@tanstack/react-query": "^5.62.7",
-    "@tasktracker/shared": "*",
+    "@kram/shared": "*",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },

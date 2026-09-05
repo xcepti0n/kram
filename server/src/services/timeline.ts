@@ -6,7 +6,7 @@
  * range, so a task that started before `from` still renders with its line
  * clipped at the viewport edge rather than disappearing.
  */
-import { addDays, today, type TimelineResponse, type TimelineTask } from '@tasktracker/shared';
+import { addDays, today, type TimelineResponse, type TimelineTask } from '@kram/shared';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
 

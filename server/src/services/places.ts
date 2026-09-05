@@ -7,7 +7,7 @@
  * that, because two tasks at the same place would carry unrelated strings.
  */
 import { randomUUID } from 'node:crypto';
-import type { CreatePlaceInput, Place, UpdatePlaceInput } from '@tasktracker/shared';
+import type { CreatePlaceInput, Place, UpdatePlaceInput } from '@kram/shared';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
 import { NotFound } from './tasks.js';

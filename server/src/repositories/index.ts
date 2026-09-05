@@ -14,7 +14,7 @@ import type {
   StatusUpdate,
   Task,
   TaskStatus,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 
 /* ---------------------------------------------------------------- rows --- */
 

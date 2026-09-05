@@ -18,7 +18,7 @@ import type {
   UpdatePageInput,
   UpdateSettingsInput,
   UpdateTaskInput,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 
 export class ApiError extends Error {
   constructor(

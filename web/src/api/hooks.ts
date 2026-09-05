@@ -25,7 +25,7 @@ import type {
   TaskWithChildren,
   UpdateSettingsInput,
   UpdateTaskInput,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import { api, keys } from './client.js';
 import { useToast } from '../components/Toast.js';
 

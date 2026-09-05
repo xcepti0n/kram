@@ -14,7 +14,7 @@ import {
   type StatusUpdate,
   type TaskStatus,
   type TaskWithChildren,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import { DateInput } from '../../components/DateInput.js';
 import { PlacePicker, type PlaceWithCount } from '../../components/PlacePicker.js';
 import { STATUS_LABEL, StatusChip } from '../../components/StatusChip.js';

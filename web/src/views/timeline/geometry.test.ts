@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { daysBetween } from '@tasktracker/shared';
+import { daysBetween } from '@kram/shared';
 import {
   buildSegments,
   fitRange,

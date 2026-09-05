@@ -1,4 +1,4 @@
-# Implementation Tracker — TaskTracker
+# Implementation Tracker — Kram
 
 **Last updated:** 2026-09-04
 **Docs:** [`BRD.md`](./BRD.md) · [`DESIGN.md`](./DESIGN.md) · feature designs under `.docs/<feature>/design.md`
@@ -171,7 +171,7 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 ## M9 — Deployment (NFR-1)
 
-- [ ] `deploy/tasktracker.service` — systemd unit, `Restart=always`, env file (DD-1)
+- [ ] `deploy/kram.service` — systemd unit, `Restart=always`, env file (DD-1)
 - [ ] `deploy/README.md` — LXC runbook: Node install, first deploy, backup, restore
 - [ ] Env configuration: `PORT`, `DATA_DIR`, `NODE_ENV`
 - [ ] Production build verified from a clean checkout

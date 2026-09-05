@@ -249,11 +249,22 @@ export type TimelineResponse = z.infer<typeof timelineResponse>;
 
 /* --------------------------------------------------------------- export --- */
 
-export const EXPORT_FORMAT = 'tasktracker.export';
+/*
+ * Deliberately not the product name. The discriminator identifies the *format*,
+ * which outlives whatever the app is called; tying it to the name would mean
+ * every rename invalidates every backup a user already holds.
+ */
+export const EXPORT_FORMAT = 'task-timeline.export.v1';
 export const EXPORT_VERSION = 1;
 
+/** Formats written under earlier product names. Import accepts them; export never writes them. */
+export const LEGACY_EXPORT_FORMATS = ['tasktracker.export', 'kram.export'] as const;
+
 export const exportDocument = z.object({
-  format: z.literal(EXPORT_FORMAT),
+  format: z.union([
+    z.literal(EXPORT_FORMAT),
+    ...LEGACY_EXPORT_FORMATS.map((f) => z.literal(f)),
+  ] as [z.ZodLiteral<string>, z.ZodLiteral<string>, ...z.ZodLiteral<string>[]]),
   version: z.number().int().positive(),
   exported_at: z.string(),
   users: z.array(z.object({ id, name: z.string(), created_at: z.string() })),

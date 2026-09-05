@@ -6,7 +6,7 @@ import {
   type SortMode,
   type Task,
   type TaskStatus,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import {
   useAddUpdate,
   useChangeStatus,
@@ -38,6 +38,9 @@ import { Timeline } from './views/timeline/Timeline.js';
 import { Settings } from './views/Settings.js';
 import { TaskComposer } from './views/tasks/TaskComposer.js';
 import styles from './App.module.css';
+
+/* Not named for the product: a rename must not reset everyone's theme. */
+const SETTINGS_KEY = 'app.settings';
 
 const SORT_LABEL: Record<SortMode, string> = {
   manual: 'My order',
@@ -107,7 +110,7 @@ export function App() {
     root.dataset.density = settings.density;
     try {
       localStorage.setItem(
-        'tasktracker.settings',
+        SETTINGS_KEY,
         JSON.stringify({ theme: settings.theme, mode: settings.mode, density: settings.density }),
       );
     } catch {

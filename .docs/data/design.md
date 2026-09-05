@@ -57,11 +57,11 @@ peace of mind that the data is not trapped.
 ### 2.1 Export
 
 `GET /api/export` returns the full dataset as JSON, and `GET /api/export?download=1` sends it as a
-file named `tasktracker-YYYY-MM-DD.json`.
+file named `kram-YYYY-MM-DD.json`.
 
 ```jsonc
 {
-  "format": "tasktracker.export",
+  "format": "task-timeline.export.v1",
   "version": 1,
   "exported_at": "2026-09-04T10:30:00Z",
   "users": [ { "id": "u1", "name": "vaiibhav", "created_at": "…" } ],

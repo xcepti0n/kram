@@ -6,7 +6,7 @@
 import type { FastifyInstance } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
-import { today } from '@tasktracker/shared';
+import { today } from '@kram/shared';
 
 let server: FastifyInstance;
 let pageId: string;

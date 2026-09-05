@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Page } from '@tasktracker/shared';
+import type { Page } from '@kram/shared';
 import styles from './Sidebar.module.css';
 
 interface Props {

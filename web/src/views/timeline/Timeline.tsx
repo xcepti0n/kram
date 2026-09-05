@@ -9,7 +9,7 @@
  * dramatic one from identical code.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { fromIso, today, type TimelineResponse, type TaskStatus } from '@tasktracker/shared';
+import { fromIso, today, type TimelineResponse, type TaskStatus } from '@kram/shared';
 import {
   buildSegments,
   clusterPoints,

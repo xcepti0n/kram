@@ -7,7 +7,7 @@ import {
   type CreatePageInput,
   type Page,
   type UpdatePageInput,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
 import { BadRequest, NotFound } from './tasks.js';

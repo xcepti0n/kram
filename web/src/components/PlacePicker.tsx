@@ -8,7 +8,7 @@
  * you are standing in (DD-24).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Place } from '@tasktracker/shared';
+import type { Place } from '@kram/shared';
 import styles from './PlacePicker.module.css';
 
 export interface PlaceWithCount extends Place {

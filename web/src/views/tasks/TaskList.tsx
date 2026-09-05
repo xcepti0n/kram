@@ -21,7 +21,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { Page, Place, SortMode, Task, TaskStatus } from '@tasktracker/shared';
+import type { Page, Place, SortMode, Task, TaskStatus } from '@kram/shared';
 import { TaskRow } from './TaskRow.js';
 import { TaskComposer } from './TaskComposer.js';
 import styles from './TaskList.module.css';

@@ -4,12 +4,16 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <title>TaskTracker</title>
+    <title>Kram</title>
     <script>
       // Apply the stored theme before first paint. The server is the source of
       // truth, but waiting for it would flash the wrong theme (FR-9.4).
       try {
-        var s = JSON.parse(localStorage.getItem('tasktracker.settings') || '{}');
+        var s = JSON.parse(
+          localStorage.getItem('app.settings') ||
+            localStorage.getItem('tasktracker.settings') ||
+            '{}',
+        );
         var r = document.documentElement;
         r.dataset.theme = s.theme || 'calm';
         r.dataset.mode = s.mode || 'system';

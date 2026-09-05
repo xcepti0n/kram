@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { formatDate, type Task } from '@tasktracker/shared';
+import { formatDate, type Task } from '@kram/shared';
 import { StatusChip } from '../../components/StatusChip.js';
 import styles from './TaskRow.module.css';
 

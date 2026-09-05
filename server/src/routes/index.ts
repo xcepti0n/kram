@@ -19,7 +19,7 @@ import {
   updateSettingsInput,
   updateTaskInput,
   type SortMode,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 import { z } from 'zod';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
@@ -340,7 +340,7 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
     async (request, reply) => {
       const doc = exportAll(db, boolish(request.query.include_deleted) ?? false);
       if (boolish(request.query.download)) {
-        const name = `tasktracker-${new Date().toISOString().slice(0, 10)}.json`;
+        const name = `kram-${new Date().toISOString().slice(0, 10)}.json`;
         reply.header('content-disposition', `attachment; filename="${name}"`);
       }
       return reply.type('application/json').send(JSON.stringify(doc, null, 2));

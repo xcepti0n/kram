@@ -12,7 +12,7 @@ import {
   fromIso,
   toIso,
   type TaskStatus,
-} from '@tasktracker/shared';
+} from '@kram/shared';
 
 export const ZOOM_LEVELS = ['day', 'week', 'month', 'quarter'] as const;
 export type ZoomLevel = (typeof ZOOM_LEVELS)[number];

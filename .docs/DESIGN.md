@@ -1,4 +1,4 @@
-# Product & Architecture Design — TaskTracker
+# Product & Architecture Design — Kram
 
 **Status:** Approved
 **Last updated:** 2026-09-04
@@ -111,7 +111,7 @@ elaborate would be infrastructure to maintain rather than capability delivered.
 └─────────────────────────────────────────────────────┼────────────────────────┘
                                                       │
                                           ┌───────────▼────────────┐
-                                          │   data/tasktracker.db  │
+                                          │   data/app.db  │
                                           │   single SQLite file   │
                                           │   WAL mode             │
                                           │   Proxmox snapshots it │
@@ -536,6 +536,17 @@ strided the rest by index, which still let a month boundary land beside an alrea
 ticks are placed first, minor ones fill the gaps, and both passes honour the same minimum spacing.
 Stating the rule in the units the collision happens in is what makes it hold at every width.
 
+### DD-28 — Persisted identifiers are never named after the product
+**Decision.** The SQLite file is `app.db`, the export discriminator is
+`task-timeline.export.v1`, and the browser storage key is `app.settings`. None carries the product
+name. Values written under earlier names are accepted on read and adopted in place.
+**Why.** Renaming TaskTracker to Kram would otherwise have silently orphaned the existing database
+(the server would have created an empty one beside it), invalidated every export already taken, and
+reset the stored theme. A rename is a cosmetic decision; it must not be a data-migration event. The
+things that outlive the name should not be named after it.
+**Cost.** Two legacy lists to carry (`LEGACY_EXPORT_FORMATS`, and the adoption loop in
+`server/src/index.ts`). Both are a few lines and are the reason a future rename costs nothing.
+
 ### DD-27 — The timeline earns attention through hierarchy and motion
 **Decision.** Status drives visual weight rather than colour alone: `in_progress` renders at full
 opacity with a themed glow, `done` and `todo` recede. Rows are zebra-striped, today is a labelled
@@ -578,7 +589,7 @@ navigated rather than read, and grows into the thing nobody updates.
 ## 7. Repository layout
 
 ```
-TaskTracker/
+Kram/
 ├── .docs/
 │   ├── BRD.md               requirements
 │   ├── DESIGN.md            this document
@@ -621,7 +632,7 @@ proxying `/api` to the former, so the browser sees one origin exactly as in prod
 git pull
 npm ci
 npm run build          # builds web/ then server/ into dist/
-sudo systemctl restart tasktracker
+sudo systemctl restart kram
 ```
 
 The systemd unit runs `node dist/server/index.js` with `Restart=always`, an env file for

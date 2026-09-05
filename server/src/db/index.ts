@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { nextColour, between, today } from '@tasktracker/shared';
+import { nextColour, between, today } from '@kram/shared';
 import { openSqlite, type Database } from './sqlite.js';
 
 export type DB = Database;

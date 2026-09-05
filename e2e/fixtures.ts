@@ -1,4 +1,5 @@
 import { test as base, expect, type Page } from '@playwright/test';
+import { EXPORT_FORMAT } from '@kram/shared';
 
 /**
  * Each spec starts from a known-empty database: the suite runs against one
@@ -18,7 +19,7 @@ export const test = base.extend<{ seeded: Seeded }>({
 
     await request.post('/api/import?mode=replace', {
       data: {
-        format: 'tasktracker.export',
+        format: EXPORT_FORMAT,
         version: 1,
         exported_at: new Date().toISOString(),
         users: [firstUser],

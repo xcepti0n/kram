@@ -7,6 +7,47 @@ Everything below assumes a Debian 12 or Ubuntu 24.04 container. Commands run as 
 
 ---
 
+## The short way
+
+`deploy/proxmox-install.sh` does all of section 1–6 in one pass. Run it **on the Proxmox host**, as
+root:
+
+```bash
+# From a checkout on the host (no GitHub needed — it copies the working tree in):
+./deploy/proxmox-install.sh
+
+# Or, once the repo is pushed somewhere:
+REPO_URL=https://github.com/<you>/kram.git   bash -c "$(curl -fsSL https://raw.githubusercontent.com/<you>/kram/main/deploy/proxmox-install.sh)"
+```
+
+Everything is overridable:
+
+```bash
+CTID=121 CORES=4 RAM=2048 DISK=16 APP_PORT=8080 ./deploy/proxmox-install.sh
+NET=192.168.1.50/24 GATEWAY=192.168.1.1 ./deploy/proxmox-install.sh   # static IP
+```
+
+| Variable | Default | Notes |
+| --- | --- | --- |
+| `CTID` | next free | Fails rather than reusing an occupied ID |
+| `HOSTNAME_` | `kram` | |
+| `CORES` / `RAM` / `DISK` | 2 / 1024 MB / 8 GB | |
+| `NET` / `GATEWAY` | `dhcp` | `GATEWAY` required for a static `NET` |
+| `BRIDGE` | `vmbr0` | |
+| `STORAGE` | auto | First active storage with `rootdir` content |
+| `APP_PORT` | `4310` | |
+| `NODE_MAJOR` | `26` | Must be ≥24 — the script refuses to continue otherwise |
+| `REPO_URL` | *(empty)* | Empty means copy the local checkout |
+
+It creates the container, installs Node, builds, writes `/etc/kram.env` and the unit, starts the
+service, and health-checks it before telling you the URL. If a step fails it prints the failing
+line and the service logs rather than leaving you a half-built container.
+
+The rest of this document is the manual version — worth reading if you want to know what the
+script did, and what to do when something needs fixing later.
+
+---
+
 ## 1. Create the container
 
 In the Proxmox UI or shell. An **unprivileged** container is the right default — this app needs no

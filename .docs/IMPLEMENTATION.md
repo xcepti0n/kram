@@ -181,6 +181,9 @@ decision references (`DD-*`) at `DESIGN.md`.
       `server/src/deploy.test.ts` by polling from process start
 - [x] Legacy database adoption covered by a test that fails if the rename guard is removed (DD-28)
 - [x] `npm test` builds first, so a fresh checkout tests the artefact it just produced
+- [x] `deploy/proxmox-install.sh` — one-shot host installer: creates the LXC, installs Node,
+      builds, configures the service, health-checks. Self-contained (no third-party framework
+      sourced at run time). Shellcheck clean; control flow exercised against stubbed `pct`/`pvesm`.
 - [ ] Deploy verified end-to-end on the Proxmox LXC — **needs the actual host**
 
 ## Parked

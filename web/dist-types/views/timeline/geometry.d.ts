@@ -43,10 +43,14 @@ export interface Tick {
     major: boolean;
 }
 /**
- * Axis ticks for a range. Density is chosen per level so labels never collide:
- * daily at day level, weekly at week, monthly at month, quarterly beyond.
+ * Axis ticks for a range, thinned to the available width.
+ *
+ * Density is chosen per level — daily at day level, weekly at week, and so on —
+ * but on a narrow screen even weekly labels collide into mush. `plotWidth` sets
+ * how many labels can actually fit; the rest keep their gridline and drop their
+ * text, so the axis stays readable at any size.
  */
-export declare function ticksFor(range: DateRange, level: ZoomLevel): Tick[];
+export declare function ticksFor(range: DateRange, level: ZoomLevel, plotWidth?: number): Tick[];
 export interface StatusSegment {
     from: string;
     to: string;

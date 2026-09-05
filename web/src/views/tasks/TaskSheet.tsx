@@ -4,7 +4,7 @@
  *
  * Every field saves on blur — there are no save buttons (FR-10.3).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   formatDate,
   PALETTE,
@@ -58,6 +58,9 @@ export function TaskSheet({
   const [updateStatus, setUpdateStatus] = useState<TaskStatus | ''>('');
   const [editingUpdate, setEditingUpdate] = useState<string | null>(null);
   const [editingBody, setEditingBody] = useState('');
+  const [dragY, setDragY] = useState(0);
+  const dragStart = useRef<number | null>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setTitle(task.title);
@@ -92,6 +95,27 @@ export function TaskSheet({
     );
   }, [task.updates, task.status_events]);
 
+  /* Drag-to-dismiss on touch. Only starts when the content is scrolled to the
+     top, so pulling down to read never closes the sheet by accident. */
+  const onGrabberDown = (event: React.PointerEvent) => {
+    if ((scrollRef.current?.scrollTop ?? 0) > 0) return;
+    dragStart.current = event.clientY;
+    (event.target as Element).setPointerCapture?.(event.pointerId);
+  };
+
+  const onGrabberMove = (event: React.PointerEvent) => {
+    if (dragStart.current === null) return;
+    setDragY(Math.max(0, event.clientY - dragStart.current));
+  };
+
+  const onGrabberUp = () => {
+    if (dragStart.current === null) return;
+    // Past a third of the way down, the gesture reads as "dismiss".
+    if (dragY > 120) onClose();
+    dragStart.current = null;
+    setDragY(0);
+  };
+
   const submitUpdate = () => {
     const trimmed = updateBody.trim();
     if (!trimmed) return;
@@ -104,7 +128,25 @@ export function TaskSheet({
   return (
     <>
       <div className={styles.scrim} onClick={onClose} aria-hidden="true" />
-      <aside className={styles.sheet} role="dialog" aria-label={task.title} data-testid="task-sheet">
+      <aside
+        className={styles.sheet}
+        role="dialog"
+        aria-label={task.title}
+        data-testid="task-sheet"
+        style={dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined}
+      >
+        {/* Touch handle. Hidden on desktop, where the sheet is a side panel. */}
+        <div
+          className={styles.grabber}
+          onPointerDown={onGrabberDown}
+          onPointerMove={onGrabberMove}
+          onPointerUp={onGrabberUp}
+          onPointerCancel={onGrabberUp}
+          data-testid="sheet-grabber"
+          aria-hidden="true"
+        >
+          <span />
+        </div>
         <header className={styles.header}>
           {pageName && <span className={styles.page}>{pageName}</span>}
           <button
@@ -120,7 +162,7 @@ export function TaskSheet({
           </button>
         </header>
 
-        <div className={styles.body}>
+        <div className={styles.body} ref={scrollRef}>
           <textarea
             className={styles.title}
             value={title}

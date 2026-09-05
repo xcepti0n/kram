@@ -128,16 +128,22 @@
 }
 
 /* Mobile: the sidebar slides over the content rather than shrinking it. */
-@media (max-width: 860px) {
+@media (max-width: 760px) {
   .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     bottom: 0;
     z-index: 51;
+    width: min(300px, 82vw);
+    /* Opaque here: a translucent panel over scrolling content is unreadable. */
+    background: var(--surface);
     transform: translateX(-100%);
     transition: transform var(--motion) var(--motion-ease);
     box-shadow: var(--shadow-lg);
+    padding-top: calc(var(--space-3) + env(safe-area-inset-top));
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    padding-left: calc(var(--space-2) + env(safe-area-inset-left));
   }
 
   .sidebar[data-open] {
@@ -150,7 +156,29 @@
     inset: 0;
     z-index: 50;
     background: var(--overlay);
+    animation: fadeIn var(--motion) var(--motion-ease);
   }
+
+  /* Comfortable thumb targets — 44px is the accepted floor. */
+  .item {
+    min-height: 44px;
+    font-size: var(--font-size-base);
+  }
+
+  .addPage {
+    width: 34px;
+    height: 34px;
+  }
+
+  .pageHandle {
+    width: 32px;
+    height: 40px;
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 /* Pages are reorderable, so each row pairs a navigation button with a drag

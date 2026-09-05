@@ -10,7 +10,7 @@ Read these before making changes. Keep them current as the code evolves.
 | Document | Contents |
 | --- | --- |
 | `.docs/BRD.md` | Requirements, numbered `FR-*` / `NFR-*` |
-| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-24` |
+| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-26` |
 | `.docs/IMPLEMENTATION.md` | Milestone tracker — **update as work completes** |
 
 Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
@@ -87,6 +87,9 @@ npm start       # production server from dist/
 - **Ordering.** `position` is a LexoRank-style string. Reordering sends neighbour ids, not an
   index, and writes one row (DD-6). New tasks append to the **bottom** (DD-18). Manual order is the
   default sort, not the only one, and is retained under other sorts (DD-17).
+- **Responsive.** Three regimes, breakpoint 760px: persistent sidebar above it, overlay drawer
+  below. Both panels dismiss by gesture (DD-25). Touch targets ≥44px; nothing may depend on hover.
+  Anything sized in the timeline must be derived from the canvas width, never a constant.
 - **Friction.** FR-10 is a hard constraint. A new interaction that adds a step to task creation or
   status updates needs a reason recorded in the design doc.
 

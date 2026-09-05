@@ -1,6 +1,6 @@
 .region {
   position: fixed;
-  bottom: var(--space-4);
+  bottom: calc(var(--space-4) + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -78,5 +78,17 @@
   to {
     opacity: 1;
     transform: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .region {
+    /* Above the sheet's own bottom edge, and clear of the home indicator. */
+    z-index: 60;
+    width: calc(100vw - var(--space-4));
+  }
+
+  .action {
+    min-height: 34px;
   }
 }

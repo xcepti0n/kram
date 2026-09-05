@@ -150,6 +150,9 @@
 
 .groupBand {
   fill: var(--surface-sunken);
+  /* Slightly translucent so the axis gridlines read continuously through the
+     group header instead of stopping at it. */
+  fill-opacity: 0.82;
 }
 
 .groupToggle {
@@ -289,5 +292,43 @@
   to {
     opacity: 1;
     transform: translate(-50%, -100%);
+  }
+}
+
+/* Stands in for the task name when the name column is collapsed. */
+.rowSwatch {
+  cursor: pointer;
+}
+
+@media (max-width: 720px) {
+  .controls {
+    padding: 0 var(--space-3) var(--space-2);
+    gap: var(--space-2);
+    flex-wrap: wrap;
+  }
+
+  .canvas {
+    margin: 0 var(--space-3);
+  }
+
+  .zoomButton,
+  .todayButton {
+    min-height: 34px;
+    padding: var(--space-1) var(--space-2);
+    font-size: var(--font-size-xs);
+  }
+
+  .legend {
+    padding: var(--space-2) var(--space-3) calc(var(--space-2) + env(safe-area-inset-bottom));
+    gap: var(--space-3);
+  }
+
+  /* A point is a touch target here, not just a mark. */
+  .point {
+    stroke-width: 3;
+  }
+
+  .card {
+    max-width: min(260px, 78vw);
   }
 }

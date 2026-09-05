@@ -510,6 +510,26 @@ no native module to rebuild after a Node upgrade. It is the same SQLite undernea
 adapter supplies both (savepoints for nesting, plus binding normalisation). Roughly 100 lines, and
 it confines the difference to one file — swapping back later would be a change to that file alone.
 
+### DD-25 — Layout adapts at three widths, and both panels collapse
+**Decision.** Below 760px the sidebar becomes an overlay drawer (tap-scrim or swipe to close) and
+the task sheet becomes a bottom sheet with drag-to-dismiss. The timeline's name column is a share of
+the canvas rather than a fixed width, and can be collapsed away entirely.
+**Why.** The app is used from a phone as much as a laptop (NFR-2). A fixed 210px name column took
+more than half a phone screen and left the chart an unusable sliver, and a side sheet on a 412px
+viewport is just a full-screen modal that happens to slide from the wrong edge. A bottom sheet is
+reachable with a thumb and keeps the list visible above it.
+**Cost.** Three layout regimes to keep working rather than one. The Playwright suite runs a mobile
+project against the real breakpoints, which is what makes that maintainable.
+
+### DD-26 — Axis labels thin themselves to the available width
+**Decision.** `ticksFor` takes the plot width and blanks the labels that cannot fit, keeping their
+gridlines and always preferring major ticks.
+**Why.** Tick density was chosen per zoom level alone, which is correct on a laptop and illegible on
+a phone — week labels overlapped into unreadable mush. Density has to be a function of both the
+level and the space available.
+**Cost.** The axis shows fewer labels on a narrow screen. Gridlines stay, so position is still
+readable, and major ticks survive so month and year boundaries remain visible.
+
 ### DD-19 — One design document per feature
 **Decision.** `.docs/<feature>/design.md`, one folder per feature, rather than a single combined
 document.

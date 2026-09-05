@@ -192,8 +192,48 @@
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 760px) {
   .menuButton {
     display: grid;
+    width: 38px;
+    height: 38px;
+  }
+
+  .header {
+    /* Clear of a notch or status bar. */
+    padding: calc(var(--space-3) + env(safe-area-inset-top)) var(--space-3) var(--space-2);
+    gap: var(--space-2);
+  }
+
+  .title {
+    font-size: var(--font-size-lg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .headerActions {
+    /* The sort control drops to its own line rather than crushing the title. */
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .sortSelect {
+    min-height: 36px;
+  }
+
+  .scroller {
+    padding: 0 var(--space-3) calc(var(--space-8) + env(safe-area-inset-bottom));
+  }
+
+  .quickScrim {
+    /* Nearer the top on a phone, so the on-screen keyboard does not cover it. */
+    padding-top: 8vh;
+    align-items: flex-start;
+  }
+
+  .quick {
+    width: calc(100vw - var(--space-4));
   }
 }

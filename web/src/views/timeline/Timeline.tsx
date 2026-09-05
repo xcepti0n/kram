@@ -27,11 +27,21 @@ import {
 import { STATUS_LABEL } from '../../components/StatusChip.js';
 import styles from './Timeline.module.css';
 
-const NAME_WIDTH = 210;
 const AXIS_HEIGHT = 34;
 // Enough room for the last axis label, which is drawn to the right of its tick
 // and would otherwise be cut off at the canvas edge.
 const PADDING_RIGHT = 64;
+
+/**
+ * The name column takes a share of the canvas rather than a fixed width: at 210px
+ * on a phone it swallowed more than half the screen and left the plot a useless
+ * sliver. It can also be collapsed away entirely, which is what makes the chart
+ * usable on a narrow screen.
+ */
+function nameWidthFor(canvasWidth: number, collapsed: boolean): number {
+  if (collapsed) return 0;
+  return Math.round(Math.min(210, Math.max(96, canvasWidth * 0.32)));
+}
 
 interface HoverCard {
   x: number;
@@ -56,6 +66,7 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
   const [lineWeight, setLineWeight] = useState(2.5);
   const [hover, setHover] = useState<HoverCard | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [namesCollapsed, setNamesCollapsed] = useState(false);
 
   const todayDate = today();
   const level = levelForRange(range);
@@ -106,9 +117,11 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
     [data.tasks, todayDate],
   );
 
-  const plotWidth = Math.max(240, width - NAME_WIDTH - PADDING_RIGHT);
+  const NAME_WIDTH = nameWidthFor(width, namesCollapsed);
+  const plotWidth = Math.max(160, width - NAME_WIDTH - PADDING_RIGHT);
   const x = useMemo(() => scaleFor(range, plotWidth), [range, plotWidth]);
-  const ticks = useMemo(() => ticksFor(range, level), [range, level]);
+  // Ticks thin themselves to the plot width, so labels never collide on a phone.
+  const ticks = useMemo(() => ticksFor(range, level, plotWidth), [range, level, plotWidth]);
 
   /** Rows, grouped by page when asked. Collapsed groups render one summary row. */
   const rows = useMemo(() => {
@@ -218,6 +231,16 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
           <button
             type="button"
             className={styles.todayButton}
+            onClick={() => setNamesCollapsed((v) => !v)}
+            aria-pressed={namesCollapsed}
+            title={namesCollapsed ? 'Show task names' : 'Hide task names for more chart'}
+            data-testid="timeline-toggle-names"
+          >
+            {namesCollapsed ? 'Names' : 'Hide names'}
+          </button>
+          <button
+            type="button"
+            className={styles.todayButton}
             onClick={() => onRangeChange(fitRange(spans, todayDate))}
             data-testid="timeline-fit"
             title="Frame everything"
@@ -309,6 +332,8 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
                       height={rowHeight}
                       className={styles.groupBand}
                     />
+                    {/* With names hidden the band is the only affordance, so it
+                        takes the whole row rather than leaving a stub. */}
                     <g
                       role="button"
                       tabIndex={0}
@@ -340,20 +365,24 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
                         transform={`translate(4 ${y})`}
                         className={styles.chevron}
                       />
-                      <circle cx={22} cy={y} r={4} fill={row.colour} />
-                      <text x={34} y={y + 4} className={styles.groupName}>
-                        {row.name}
-                      </text>
-                      {/* Right-aligned inside the name column, so it can never
-                          collide with a long page name. */}
-                      <text
-                        x={NAME_WIDTH - 10}
-                        y={y + 4}
-                        textAnchor="end"
-                        className={styles.groupCount}
-                      >
-                        {row.count}
-                      </text>
+                      <circle cx={NAME_WIDTH > 0 ? 22 : 14} cy={y} r={4} fill={row.colour} />
+                      {NAME_WIDTH > 0 && (
+                        <>
+                          <text x={34} y={y + 4} className={styles.groupName}>
+                            {truncate(row.name, Math.max(4, Math.floor((NAME_WIDTH - 78) / 7.6)))}
+                          </text>
+                          {/* Right-aligned inside the name column, so it can never
+                              collide with a long page name. */}
+                          <text
+                            x={NAME_WIDTH - 10}
+                            y={y + 4}
+                            textAnchor="end"
+                            className={styles.groupCount}
+                          >
+                            {row.count}
+                          </text>
+                        </>
+                      )}
                     </g>
                   </g>
                 );
@@ -386,27 +415,48 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
                   />
 
                   {/* Name column, sticky by being drawn over an opaque band */}
-                  <rect
-                    x={0}
-                    y={y - rowHeight / 2}
-                    width={NAME_WIDTH}
-                    height={rowHeight}
-                    className={styles.nameBand}
-                  />
-                  <text
-                    x={groupByPage ? 20 : 8}
-                    y={y + 4}
-                    className={styles.taskName}
-                    onClick={() => onSelectTask(task.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') onSelectTask(task.id);
-                    }}
-                    data-testid={`timeline-task-${task.title}`}
-                  >
-                    {truncate(task.title, groupByPage ? 26 : 28)}
-                  </text>
+                  {NAME_WIDTH > 0 && (
+                    <rect
+                      x={0}
+                      y={y - rowHeight / 2}
+                      width={NAME_WIDTH}
+                      height={rowHeight}
+                      className={styles.nameBand}
+                    />
+                  )}
+                  {NAME_WIDTH > 0 ? (
+                    <text
+                      x={groupByPage ? 20 : 8}
+                      y={y + 4}
+                      className={styles.taskName}
+                      onClick={() => onSelectTask(task.id)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') onSelectTask(task.id);
+                      }}
+                      data-testid={`timeline-task-${task.title}`}
+                    >
+                      {truncate(
+                        task.title,
+                        Math.max(6, Math.floor((NAME_WIDTH - (groupByPage ? 26 : 14)) / 7.1)),
+                      )}
+                    </text>
+                  ) : (
+                    /* With names hidden the row still needs an identity, and the
+                       task's colour is what the line already uses. */
+                    <rect
+                      x={2}
+                      y={y - 5}
+                      width={4}
+                      height={10}
+                      rx={2}
+                      fill={task.colour}
+                      className={styles.rowSwatch}
+                      onClick={() => onSelectTask(task.id)}
+                      data-testid={`timeline-task-${task.title}`}
+                    />
+                  )}
 
                   <g clipPath="url(#plot-clip)">
                     {/* Status segments (FR-5.3). A blocked stretch is dashed and

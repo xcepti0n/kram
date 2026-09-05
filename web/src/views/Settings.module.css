@@ -257,3 +257,36 @@
   font-family: var(--font-mono);
   font-size: 0.92em;
 }
+
+@media (max-width: 720px) {
+  .row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-2);
+  }
+
+  .label {
+    width: auto;
+  }
+
+  .segmented {
+    width: 100%;
+  }
+
+  .segment {
+    flex: 1;
+    min-height: 38px;
+  }
+
+  .themeGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .pageItem {
+    flex-wrap: wrap;
+  }
+
+  .button {
+    min-height: 42px;
+  }
+}

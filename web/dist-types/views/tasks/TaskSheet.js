@@ -5,7 +5,7 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  *
  * Every field saves on blur — there are no save buttons (FR-10.3).
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatDate, PALETTE, TASK_STATUSES, } from '@tasktracker/shared';
 import { DateInput } from '../../components/DateInput.js';
 import { PlacePicker } from '../../components/PlacePicker.js';
@@ -19,6 +19,9 @@ export function TaskSheet({ task, pageName, places, onCreatePlace, onClose, onUp
     const [updateStatus, setUpdateStatus] = useState('');
     const [editingUpdate, setEditingUpdate] = useState(null);
     const [editingBody, setEditingBody] = useState('');
+    const [dragY, setDragY] = useState(0);
+    const dragStart = useRef(null);
+    const scrollRef = useRef(null);
     useEffect(() => {
         setTitle(task.title);
         setDescription(task.description ?? '');
@@ -48,6 +51,28 @@ export function TaskSheet({ task, pageName, places, onCreatePlace, onClose, onUp
         ];
         return merged.sort((a, b) => b.at.localeCompare(a.at) || (a.kind === 'event' ? 1 : -1));
     }, [task.updates, task.status_events]);
+    /* Drag-to-dismiss on touch. Only starts when the content is scrolled to the
+       top, so pulling down to read never closes the sheet by accident. */
+    const onGrabberDown = (event) => {
+        if ((scrollRef.current?.scrollTop ?? 0) > 0)
+            return;
+        dragStart.current = event.clientY;
+        event.target.setPointerCapture?.(event.pointerId);
+    };
+    const onGrabberMove = (event) => {
+        if (dragStart.current === null)
+            return;
+        setDragY(Math.max(0, event.clientY - dragStart.current));
+    };
+    const onGrabberUp = () => {
+        if (dragStart.current === null)
+            return;
+        // Past a third of the way down, the gesture reads as "dismiss".
+        if (dragY > 120)
+            onClose();
+        dragStart.current = null;
+        setDragY(0);
+    };
     const submitUpdate = () => {
         const trimmed = updateBody.trim();
         if (!trimmed)
@@ -57,7 +82,7 @@ export function TaskSheet({ task, pageName, places, onCreatePlace, onClose, onUp
         setUpdateDate(todayString());
         setUpdateStatus('');
     };
-    return (_jsxs(_Fragment, { children: [_jsx("div", { className: styles.scrim, onClick: onClose, "aria-hidden": "true" }), _jsxs("aside", { className: styles.sheet, role: "dialog", "aria-label": task.title, "data-testid": "task-sheet", children: [_jsxs("header", { className: styles.header, children: [pageName && _jsx("span", { className: styles.page, children: pageName }), _jsx("button", { type: "button", className: styles.close, onClick: onClose, "aria-label": "Close", "data-testid": "sheet-close", children: _jsx("svg", { viewBox: "0 0 16 16", width: "15", height: "15", "aria-hidden": "true", children: _jsx("path", { d: "M4 4l8 8M12 4l-8 8", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round" }) }) })] }), _jsxs("div", { className: styles.body, children: [_jsx("textarea", { className: styles.title, value: title, rows: 1, onChange: (event) => setTitle(event.target.value), onBlur: () => {
+    return (_jsxs(_Fragment, { children: [_jsx("div", { className: styles.scrim, onClick: onClose, "aria-hidden": "true" }), _jsxs("aside", { className: styles.sheet, role: "dialog", "aria-label": task.title, "data-testid": "task-sheet", style: dragY > 0 ? { transform: `translateY(${dragY}px)`, transition: 'none' } : undefined, children: [_jsx("div", { className: styles.grabber, onPointerDown: onGrabberDown, onPointerMove: onGrabberMove, onPointerUp: onGrabberUp, onPointerCancel: onGrabberUp, "data-testid": "sheet-grabber", "aria-hidden": "true", children: _jsx("span", {}) }), _jsxs("header", { className: styles.header, children: [pageName && _jsx("span", { className: styles.page, children: pageName }), _jsx("button", { type: "button", className: styles.close, onClick: onClose, "aria-label": "Close", "data-testid": "sheet-close", children: _jsx("svg", { viewBox: "0 0 16 16", width: "15", height: "15", "aria-hidden": "true", children: _jsx("path", { d: "M4 4l8 8M12 4l-8 8", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round" }) }) })] }), _jsxs("div", { className: styles.body, ref: scrollRef, children: [_jsx("textarea", { className: styles.title, value: title, rows: 1, onChange: (event) => setTitle(event.target.value), onBlur: () => {
                                     const trimmed = title.trim();
                                     if (trimmed && trimmed !== task.title)
                                         onUpdate({ title: trimmed });

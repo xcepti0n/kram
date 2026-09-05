@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
   DndContext,
   KeyboardSensor,
@@ -46,6 +46,7 @@ export function Sidebar({
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+  const swipeStart = useRef<{ x: number; y: number } | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -94,7 +95,26 @@ export function Sidebar({
   return (
     <>
       {open && <div className={styles.scrim} onClick={onClose} aria-hidden="true" />}
-      <nav className={styles.sidebar} data-open={open || undefined} aria-label="Views and pages">
+      <nav
+        className={styles.sidebar}
+        data-open={open || undefined}
+        aria-label="Views and pages"
+        onTouchStart={(event) => {
+          const touch = event.touches[0];
+          if (touch) swipeStart.current = { x: touch.clientX, y: touch.clientY };
+        }}
+        onTouchEnd={(event) => {
+          const start = swipeStart.current;
+          const touch = event.changedTouches[0];
+          swipeStart.current = null;
+          if (!start || !touch) return;
+          const dx = touch.clientX - start.x;
+          const dy = Math.abs(touch.clientY - start.y);
+          // A decisive leftward swipe closes it; vertical movement means the
+          // user was scrolling the page list instead.
+          if (dx < -55 && dy < 45) onClose();
+        }}
+      >
         <div className={styles.brand}>
           <span className={styles.mark} aria-hidden="true">
             <svg viewBox="0 0 20 20" width="17" height="17">

@@ -1,5 +1,5 @@
 import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-runtime";
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, } from '@dnd-kit/core';
 import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
 import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, } from '@dnd-kit/sortable';
@@ -11,6 +11,7 @@ export function Sidebar({ pages, view, onNavigate, onCreatePage, onRenamePage, o
     const [renaming, setRenaming] = useState(null);
     const [renameValue, setRenameValue] = useState('');
     const [localOrder, setLocalOrder] = useState(null);
+    const swipeStart = useRef(null);
     const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }), useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }));
     /* The list settles locally on drop while the write is in flight; the query
        invalidation reconciles it afterwards. */
@@ -52,7 +53,23 @@ export function Sidebar({ pages, view, onNavigate, onCreatePage, onRenamePage, o
         setNewName('');
         setCreating(false);
     };
-    return (_jsxs(_Fragment, { children: [open && _jsx("div", { className: styles.scrim, onClick: onClose, "aria-hidden": "true" }), _jsxs("nav", { className: styles.sidebar, "data-open": open || undefined, "aria-label": "Views and pages", children: [_jsxs("div", { className: styles.brand, children: [_jsx("span", { className: styles.mark, "aria-hidden": "true", children: _jsxs("svg", { viewBox: "0 0 20 20", width: "17", height: "17", children: [_jsx("path", { d: "M3 6h6M3 10h10M3 14h7", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }), _jsx("circle", { cx: "16", cy: "6", r: "2.2", fill: "currentColor" })] }) }), "TaskTracker"] }), _jsxs("ul", { className: styles.group, children: [_jsx("li", { children: _jsxs("button", { type: "button", className: styles.item, "data-active": isActive({ kind: 'overview' }) || undefined, onClick: () => onNavigate({ kind: 'overview' }), "data-testid": "nav-overview", children: [_jsx(Glyph, { name: "overview" }), "Overview"] }) }), _jsx("li", { children: _jsxs("button", { type: "button", className: styles.item, "data-active": isActive({ kind: 'timeline' }) || undefined, onClick: () => onNavigate({ kind: 'timeline' }), "data-testid": "nav-timeline", children: [_jsx(Glyph, { name: "timeline" }), "Timeline"] }) })] }), _jsxs("div", { className: styles.sectionHeader, children: [_jsx("span", { children: "Pages" }), _jsx("button", { type: "button", className: styles.addPage, onClick: () => setCreating(true), "aria-label": "New page", "data-testid": "new-page", children: _jsx("svg", { viewBox: "0 0 14 14", width: "12", height: "12", "aria-hidden": "true", children: _jsx("path", { d: "M7 2v10M2 7h10", stroke: "currentColor", strokeWidth: "1.6", strokeLinecap: "round" }) }) })] }), _jsx(DndContext, { sensors: sensors, collisionDetection: closestCenter, onDragEnd: handleDragEnd, modifiers: [restrictToVerticalAxis, restrictToParentElement], children: _jsx(SortableContext, { items: ordered.map((p) => p.id), strategy: verticalListSortingStrategy, children: _jsx("ul", { className: styles.group, "data-testid": "page-list", children: ordered.map((page) => renaming === page.id ? (_jsx("li", { children: _jsx("input", { className: styles.renameInput, value: renameValue, autoFocus: true, onChange: (event) => setRenameValue(event.target.value), onBlur: () => {
+    return (_jsxs(_Fragment, { children: [open && _jsx("div", { className: styles.scrim, onClick: onClose, "aria-hidden": "true" }), _jsxs("nav", { className: styles.sidebar, "data-open": open || undefined, "aria-label": "Views and pages", onTouchStart: (event) => {
+                    const touch = event.touches[0];
+                    if (touch)
+                        swipeStart.current = { x: touch.clientX, y: touch.clientY };
+                }, onTouchEnd: (event) => {
+                    const start = swipeStart.current;
+                    const touch = event.changedTouches[0];
+                    swipeStart.current = null;
+                    if (!start || !touch)
+                        return;
+                    const dx = touch.clientX - start.x;
+                    const dy = Math.abs(touch.clientY - start.y);
+                    // A decisive leftward swipe closes it; vertical movement means the
+                    // user was scrolling the page list instead.
+                    if (dx < -55 && dy < 45)
+                        onClose();
+                }, children: [_jsxs("div", { className: styles.brand, children: [_jsx("span", { className: styles.mark, "aria-hidden": "true", children: _jsxs("svg", { viewBox: "0 0 20 20", width: "17", height: "17", children: [_jsx("path", { d: "M3 6h6M3 10h10M3 14h7", stroke: "currentColor", strokeWidth: "2", strokeLinecap: "round" }), _jsx("circle", { cx: "16", cy: "6", r: "2.2", fill: "currentColor" })] }) }), "TaskTracker"] }), _jsxs("ul", { className: styles.group, children: [_jsx("li", { children: _jsxs("button", { type: "button", className: styles.item, "data-active": isActive({ kind: 'overview' }) || undefined, onClick: () => onNavigate({ kind: 'overview' }), "data-testid": "nav-overview", children: [_jsx(Glyph, { name: "overview" }), "Overview"] }) }), _jsx("li", { children: _jsxs("button", { type: "button", className: styles.item, "data-active": isActive({ kind: 'timeline' }) || undefined, onClick: () => onNavigate({ kind: 'timeline' }), "data-testid": "nav-timeline", children: [_jsx(Glyph, { name: "timeline" }), "Timeline"] }) })] }), _jsxs("div", { className: styles.sectionHeader, children: [_jsx("span", { children: "Pages" }), _jsx("button", { type: "button", className: styles.addPage, onClick: () => setCreating(true), "aria-label": "New page", "data-testid": "new-page", children: _jsx("svg", { viewBox: "0 0 14 14", width: "12", height: "12", "aria-hidden": "true", children: _jsx("path", { d: "M7 2v10M2 7h10", stroke: "currentColor", strokeWidth: "1.6", strokeLinecap: "round" }) }) })] }), _jsx(DndContext, { sensors: sensors, collisionDetection: closestCenter, onDragEnd: handleDragEnd, modifiers: [restrictToVerticalAxis, restrictToParentElement], children: _jsx(SortableContext, { items: ordered.map((p) => p.id), strategy: verticalListSortingStrategy, children: _jsx("ul", { className: styles.group, "data-testid": "page-list", children: ordered.map((page) => renaming === page.id ? (_jsx("li", { children: _jsx("input", { className: styles.renameInput, value: renameValue, autoFocus: true, onChange: (event) => setRenameValue(event.target.value), onBlur: () => {
                                             const trimmed = renameValue.trim();
                                             if (trimmed && trimmed !== page.name)
                                                 onRenamePage(page.id, trimmed);

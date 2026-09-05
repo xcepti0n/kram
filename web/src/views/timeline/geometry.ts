@@ -126,10 +126,32 @@ const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 /**
- * Axis ticks for a range. Density is chosen per level so labels never collide:
- * daily at day level, weekly at week, monthly at month, quarterly beyond.
+ * Axis ticks for a range, thinned to the available width.
+ *
+ * Density is chosen per level — daily at day level, weekly at week, and so on —
+ * but on a narrow screen even weekly labels collide into mush. `plotWidth` sets
+ * how many labels can actually fit; the rest keep their gridline and drop their
+ * text, so the axis stays readable at any size.
  */
-export function ticksFor(range: DateRange, level: ZoomLevel): Tick[] {
+export function ticksFor(range: DateRange, level: ZoomLevel, plotWidth?: number): Tick[] {
+  const ticks = allTicks(range, level);
+  if (plotWidth === undefined) return ticks;
+
+  // Roughly the width of a label plus breathing room.
+  const MIN_LABEL_SPACING = 54;
+  const affordable = Math.max(2, Math.floor(plotWidth / MIN_LABEL_SPACING));
+  if (ticks.length <= affordable) return ticks;
+
+  // Keep every nth label, preferring major ticks so month and year boundaries
+  // survive the thinning.
+  const stride = Math.ceil(ticks.length / affordable);
+  return ticks.map((tick, index) => {
+    const keep = tick.major || index % stride === 0;
+    return keep ? tick : { ...tick, label: '' };
+  });
+}
+
+function allTicks(range: DateRange, level: ZoomLevel): Tick[] {
   const ticks: Tick[] = [];
   const end = range.to;
 

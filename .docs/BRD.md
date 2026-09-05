@@ -157,6 +157,11 @@ This is a cross-cutting requirement, not a feature. It constrains every other re
 ### NFR-2 — Platforms
 - NFR-2.1 Responsive across desktop and mobile browsers; current Chrome, Safari, Firefox and Edge.
 - NFR-2.2 Touch-capable throughout, including drag-to-reorder and timeline pan/zoom.
+- NFR-2.3 The layout adapts at three widths: a persistent sidebar on desktop and tablet, an overlay
+  drawer on phones. Both side panels are dismissible by gesture — swipe or scrim tap for the
+  sidebar, drag-down for the task sheet.
+- NFR-2.4 Interactive targets are at least 44px on touch layouts, and no affordance depends on
+  hover.
 
 ### NFR-3 — Performance
 - NFR-3.1 Interactions feel immediate: mutations apply optimistically in the UI.

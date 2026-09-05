@@ -78,6 +78,11 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] New tasks append to the bottom (DD-18)
 - [x] dnd-kit drag-to-reorder with optimistic list update (FR-7.1)
 - [x] Touch drag verified on a real mobile browser (NFR-2.2)
+- [x] Responsive layout at three widths; both panels collapse (NFR-2.3, DD-25)
+- [x] Sidebar: swipe-to-close, scrim tap, safe-area insets, 44px targets
+- [x] Task sheet becomes a bottom sheet with drag-to-dismiss on phones
+- [x] Timeline name column is proportional and collapsible (DD-25)
+- [x] Axis labels thin to the available width (DD-26)
 - [x] Keyboard reordering
 - [x] Page reordering by dragging in the sidebar (FR-6.2)
 - [ ] Cross-page move by dragging a task onto a sidebar page

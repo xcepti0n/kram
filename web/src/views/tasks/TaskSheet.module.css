@@ -422,9 +422,85 @@
   to { opacity: 1; }
 }
 
-@media (max-width: 640px) {
+/* The grabber only exists on touch layouts, where the sheet rises from the
+   bottom and drag-to-dismiss is the expected gesture. */
+.grabber {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* A bottom sheet rather than a side panel: reachable with a thumb, and it
+     leaves the list visible above so context is not lost. */
   .sheet {
-    width: 100vw;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    max-height: 92dvh;
+    border-left: none;
+    border-top: var(--border-weight) solid var(--border);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    animation: rise var(--motion) var(--motion-ease);
+    transition: transform var(--motion) var(--motion-ease);
+  }
+
+  .grabber {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 26px;
+    flex-shrink: 0;
+    touch-action: none;
+    cursor: grab;
+  }
+
+  .grabber span {
+    width: 38px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--border-strong);
+  }
+
+  .header {
+    padding-top: 0;
+  }
+
+  .body {
+    /* Clear of the home indicator on a phone. */
+    padding-bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+  }
+
+  /* Labels stack above their values rather than taking a fixed column, which
+     wasted a third of a narrow screen. */
+  .field {
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .fieldLabel {
+    width: 62px;
+  }
+
+  .title {
+    font-size: var(--font-size-lg);
+  }
+
+  /* `field-sizing: content` collapses a textarea to its first line where the
+     browser supports it, which clipped the placeholder. A floor keeps the field
+     usable either way. */
+  .description,
+  .updateInput {
+    min-height: 3.2em;
+  }
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: none;
   }
 }
 

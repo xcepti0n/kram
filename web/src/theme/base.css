@@ -135,3 +135,25 @@ a:hover {
   white-space: nowrap;
   border: 0;
 }
+
+/* iOS zooms the page when a field smaller than 16px takes focus, which then
+   leaves the layout shifted. Holding inputs at 16px on touch layouts avoids it
+   without disabling zoom, which would be an accessibility regression. */
+@media (max-width: 720px) {
+  input,
+  textarea,
+  select {
+    font-size: max(16px, var(--font-size-sm));
+  }
+}
+
+/* Touch devices get no hover, so anything revealed by hover must be visible.
+   Individual components handle their own cases; this catches the rest. */
+@media (hover: none) {
+  .sr-only-touch {
+    position: static;
+    width: auto;
+    height: auto;
+    clip: auto;
+  }
+}

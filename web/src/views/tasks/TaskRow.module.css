@@ -165,11 +165,49 @@
   }
 }
 
-/* Narrow screens: drop the secondary metadata rather than crushing the title. */
-@media (max-width: 640px) {
-  .location,
-  .page,
+/* Narrow screens: keep the row tappable, and drop the least important metadata
+   rather than crushing the title. The page and place still matter on Overview,
+   so they survive; the creation date does not. */
+@media (max-width: 720px) {
+  .row {
+    min-height: max(var(--row-height), 46px);
+    gap: var(--space-2);
+    padding: 0 var(--space-2);
+  }
+
   .date {
+    display: none;
+  }
+
+  .location,
+  .page {
+    max-width: 84px;
+  }
+
+  .checkbox {
+    width: 22px;
+    height: 22px;
+  }
+
+  .handle {
+    width: 26px;
+    height: 40px;
+  }
+
+  .delete {
+    width: 32px;
+    height: 32px;
+  }
+
+  .meta {
+    gap: var(--space-2);
+  }
+}
+
+/* Very narrow: the title and its state are all that fit. */
+@media (max-width: 460px) {
+  .location,
+  .page {
     display: none;
   }
 }

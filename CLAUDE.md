@@ -27,7 +27,9 @@ Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
 
 ## Status
 
-Design complete; implementation not started. Next up is M0 (Foundations) in the tracker.
+M0–M8 are complete: the app builds, runs and is covered by 118 unit and 48 Playwright tests.
+**M9 (Deployment) is the only milestone outstanding** — the systemd unit, the LXC runbook and a
+verified deploy. See the tracker.
 
 ## Stack
 
@@ -89,7 +91,15 @@ npm start       # production server from dist/
   default sort, not the only one, and is retained under other sorts (DD-17).
 - **Responsive.** Three regimes, breakpoint 760px: persistent sidebar above it, overlay drawer
   below. Both panels dismiss by gesture (DD-25). Touch targets ≥44px; nothing may depend on hover.
-  Anything sized in the timeline must be derived from the canvas width, never a constant.
+  Anything sized in the timeline must be derived from the canvas width, never a constant. A native
+  `select` sizes to its widest option — cap it, or it will crush its neighbours on a phone.
+- **Motion.** Animate `transform` and `opacity` only, so work stays on the compositor and off the
+  layout path. The timeline's entrance runs on mount alone — never on a range change, which must
+  stay immediate (DD-27). Every animation needs a `prefers-reduced-motion` branch that removes it
+  rather than shortening it.
+- **Overlap is a layout invariant.** Anything positioned by computed geometry — axis labels, the
+  today pill — must be spaced by a rule expressed in pixels, not in item indices, and asserted by a
+  test that measures real bounding boxes (DD-26).
 - **Friction.** FR-10 is a hard constraint. A new interaction that adds a step to task creation or
   status updates needs a reason recorded in the design doc.
 

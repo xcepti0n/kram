@@ -83,6 +83,10 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] Task sheet becomes a bottom sheet with drag-to-dismiss on phones
 - [x] Timeline name column is proportional and collapsible (DD-25)
 - [x] Axis labels thin to the available width (DD-26)
+- [x] Axis thinning works in pixel positions, so labels cannot collide (DD-26 revision)
+- [x] Header keeps the view title legible beside the sort control on a phone
+- [x] Timeline visual hierarchy: status drives weight, zebra rows, today pill (DD-27)
+- [x] Timeline entrance animation, staggered and reduced-motion aware (DD-27)
 - [x] Keyboard reordering
 - [x] Page reordering by dragging in the sidebar (FR-6.2)
 - [ ] Cross-page move by dragging a task onto a sidebar page

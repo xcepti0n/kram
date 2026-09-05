@@ -113,23 +113,48 @@ test.describe('mobile panels', () => {
     await page.getByTestId('nav-timeline').click();
     await page.waitForSelector('[data-testid="timeline-svg"]');
     await page.getByTestId('zoom-month').click();
+    // Wait for the re-render: without this the assertion races the old axis.
+    await expect
+      .poll(async () =>
+        (await page.locator('[data-testid="timeline-axis"] text').allTextContents()).filter((t) =>
+          t.trim(),
+        ).length,
+      )
+      .toBeGreaterThan(1);
 
-    // Labels are thinned to what fits, so none of them overlap.
-    const boxes = await page
-      .locator('[data-testid="timeline-svg"] text')
-      .filter({ hasNotText: /^$/ })
+    /* Scope to the axis itself. An earlier version filtered every label in the
+       SVG by a hard-coded y, which selected nothing once the axis moved down —
+       the assertion passed while testing an empty list. */
+    const axis = await page
+      .locator('[data-testid="timeline-axis"] text')
       .evaluateAll((nodes) =>
         nodes
           .filter((n) => (n.textContent ?? '').trim().length > 0)
           .map((n) => {
             const b = (n as SVGGraphicsElement).getBBox();
-            return { x: b.x, right: b.x + b.width, y: b.y };
-          }),
+            return { x: b.x, right: b.x + b.width };
+          })
+          .sort((a, b) => a.x - b.x),
       );
 
-    const axis = boxes.filter((b) => b.y < 30).sort((a, b) => a.x - b.x);
+    expect(axis.length).toBeGreaterThan(1);
     for (let i = 1; i < axis.length; i += 1) {
       expect(axis[i]!.x).toBeGreaterThanOrEqual(axis[i - 1]!.right - 1);
     }
+  });
+
+  test('shows the view title in full beside the sort control', async ({ page, seeded }) => {
+    await page.goto('/');
+
+    /* A native select sizes to its widest option and once left the title with
+       57px of a 412px header, rendering "Overview" as "Ove...". */
+    const title = page.locator('h1');
+    await expect(title).toHaveText('Overview');
+    const clipped = await title.evaluate((el) => el.scrollWidth > el.clientWidth);
+    expect(clipped).toBe(false);
+
+    const titleBox = (await title.boundingBox())!;
+    const sortBox = (await page.getByTestId('sort-select').boundingBox())!;
+    expect(titleBox.x + titleBox.width).toBeLessThanOrEqual(sortBox.x + 1);
   });
 });

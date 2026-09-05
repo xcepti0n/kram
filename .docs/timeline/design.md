@@ -107,6 +107,29 @@ The palette is chosen for distinguishability at small sizes and holds up in both
 mode. Where a page grouping is active, the page's colour heads the group while tasks keep their
 own, so a task is identifiable both by its page and individually.
 
+## 6a. Visual hierarchy and motion (DD-27)
+
+Colour identifies a task; **weight** says what is live. `in_progress` is the only status drawn at
+full opacity and the only one carrying a glow (`--accent-glow`, so Calm stays flat and Neon
+luminous). `done` sits back at 0.55 and `todo` at 0.3, which leaves the eye landing on current work
+first. Hovering a row lifts its whole line to full weight, so a dimmed segment is never unreadable —
+only deprioritised.
+
+Rows alternate a 2% tint. Over a wide chart the eye loses the line it is tracking, and a stripe
+fixes that without costing vertical space. Today is a labelled pill on its own axis row rather than
+a bare dashed rule; it sits above the date labels so it can never collide with one, and is clamped
+to the plot so it stays whole when today falls at an edge.
+
+**Entrance.** On mount the chart resolves rather than appearing: rows stagger top to bottom (26ms
+each, capped at 20 rows) and each line grows from its own start date outward. Left-to-right is the
+axis the data is measured on, so the motion restates the chart's meaning instead of decorating it.
+Points land after the line that carries them.
+
+This runs **once, on mount**. Panning and zooming stay immediate — a chart that re-animated on every
+range change would be unusable. Only `transform` and `opacity` are animated, so the work stays on
+the compositor and off the layout path (NFR-3.2). `prefers-reduced-motion` removes the animation
+entirely rather than shortening it.
+
 ## 7. Interaction — FR-5.7
 
 | Action | Input |
@@ -186,6 +209,9 @@ The first two are the significant ones; the rest follow if profiling shows a nee
 | Overview groups by page and collapses | FR-6.5 |
 | A task spanning the range edge is clipped, not dropped | §9 |
 | Overlapping points collapse with a count | §5 |
+| Axis labels never overlap, at any width or zoom level | DD-26 |
+| The today pill clears the date labels and stays inside the plot | §6a |
+| Reduced motion disables the entrance animation | §6a |
 
 Unit tests cover the scale function, segment construction from events, range clipping and tick
 intervals — pure logic where a browser adds nothing.

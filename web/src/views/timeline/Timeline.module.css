@@ -116,12 +116,37 @@
   stroke-width: 1.5;
   stroke-dasharray: 3 3;
   opacity: 0.8;
+  /* The one line the eye should find instantly. In Neon the glow token gives
+     it presence; in Calm the token is transparent and it stays a clean rule. */
+  filter: drop-shadow(0 0 6px var(--accent-glow));
+}
+
+.todayFlag {
+  fill: var(--accent);
+}
+
+.todayFlagText {
+  fill: var(--text-on-accent);
+  font-size: 9px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-anchor: middle;
+  pointer-events: none;
 }
 
 /* ------------------------------------------------------------- rows --- */
 
 .rowHit {
   fill: transparent;
+  transition: fill var(--motion) var(--motion-ease);
+}
+
+/* A faint band on every other row. Over a wide chart the eye loses the line it
+   is following; a stripe is the cheapest fix and costs no vertical space. */
+.rowStripe {
+  fill: var(--text);
+  opacity: 0.022;
+  pointer-events: none;
 }
 
 .taskRow:hover .rowHit {
@@ -181,21 +206,37 @@
 /* Status is carried by line style as well as colour, so it survives both
    colour-blindness and a greyscale print. */
 
-.segment[data-status='todo'] {
-  opacity: 0.35;
+.segment {
+  /* Grows from its own start date, so the draw-in reads as time passing. */
+  transform-box: fill-box;
+  transform-origin: left center;
+  transition: opacity var(--motion) var(--motion-ease),
+    stroke-width var(--motion) var(--motion-ease);
 }
 
+.segment[data-status='todo'] {
+  opacity: 0.3;
+}
+
+/* Live work is the reason to open this view, so it is the only status that gets
+   full weight and a glow. Everything else deliberately recedes behind it. */
 .segment[data-status='in_progress'] {
   opacity: 1;
+  filter: drop-shadow(0 1px 5px var(--accent-glow));
 }
 
 .segment[data-status='blocked'] {
-  opacity: 0.55;
+  opacity: 0.6;
   stroke-dasharray: 2 4;
 }
 
 .segment[data-status='done'] {
-  opacity: 0.75;
+  opacity: 0.55;
+}
+
+/* Hovering a row lifts its whole line out of the field. */
+.taskRow:hover .segment {
+  opacity: 1;
 }
 
 .capOpen {
@@ -210,13 +251,19 @@
   stroke: var(--surface);
   stroke-width: 2;
   cursor: pointer;
-  transition: r var(--motion) var(--motion-ease);
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--motion) var(--motion-ease),
+    stroke-width var(--motion) var(--motion-ease);
 }
 
 .point:hover,
 .point:focus-visible {
   stroke: var(--surface);
   stroke-width: 3;
+  /* Scale rather than animating `r`: a transform is composited, so a row of
+     points staying smooth during a pan does not depend on layout. */
+  transform: scale(1.45);
 }
 
 .clusterCount {
@@ -330,5 +377,99 @@
 
   .card {
     max-width: min(260px, 78vw);
+  }
+}
+
+/* ----------------------------------------------------------- motion --- */
+
+/*
+ * Rows draw themselves in on first paint, staggered top to bottom. The delay is
+ * set per row from the renderer, so the chart resolves as a sequence rather than
+ * appearing all at once — which is what made it read as a static image.
+ *
+ * Only the initial mount animates. Panning and zooming must stay immediate, so
+ * the class is applied once and never re-applied on range changes.
+ */
+.taskRow {
+  animation: rowIn 420ms var(--motion-ease) backwards;
+  animation-delay: var(--row-delay, 0ms);
+}
+
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.groupRow {
+  animation: rowIn 320ms var(--motion-ease) backwards;
+  animation-delay: var(--row-delay, 0ms);
+}
+
+/*
+ * A timeline is a chart about elapsed time, so the lines growing left to right
+ * says something true about the data rather than being decoration.
+ */
+.segment {
+  animation: drawIn 520ms var(--motion-ease) backwards;
+  animation-delay: var(--row-delay, 0ms);
+}
+
+@keyframes drawIn {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/*
+ * The entrance runs on a wrapper, not on the point itself: the point owns a
+ * hover transform, and an element cannot animate and transition the same
+ * property without one clobbering the other mid-gesture.
+ */
+.pointIn,
+.capOpen,
+.capDone {
+  animation: popIn 260ms var(--motion-ease) backwards;
+  /* Lands after the line that carries it has finished drawing. */
+  animation-delay: calc(var(--row-delay, 0ms) + 260ms);
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/*
+ * Reduced motion removes the animation entirely rather than shortening it — the
+ * point of the setting is that nothing moves unbidden (DD-8, theme §6).
+ */
+@media (prefers-reduced-motion: reduce) {
+  .taskRow,
+  .groupRow,
+  .segment,
+  .pointIn,
+  .capOpen,
+  .capDone {
+    animation: none;
+  }
+
+  .point {
+    transition: none;
   }
 }

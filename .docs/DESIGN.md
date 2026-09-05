@@ -530,6 +530,25 @@ level and the space available.
 **Cost.** The axis shows fewer labels on a narrow screen. Gridlines stay, so position is still
 readable, and major ticks survive so month and year boundaries remain visible.
 
+**Revision (2026-09-05).** The first implementation kept every major tick unconditionally and
+strided the rest by index, which still let a month boundary land beside an already-kept label —
+"31 Aug" and "7 Sep" overlapped by 18px on a phone. Thinning now works in pixel positions: major
+ticks are placed first, minor ones fill the gaps, and both passes honour the same minimum spacing.
+Stating the rule in the units the collision happens in is what makes it hold at every width.
+
+### DD-27 — The timeline earns attention through hierarchy and motion
+**Decision.** Status drives visual weight rather than colour alone: `in_progress` renders at full
+opacity with a themed glow, `done` and `todo` recede. Rows are zebra-striped, today is a labelled
+pill rather than a bare dashed line, and the chart draws itself in once on mount — rows staggered
+top to bottom, lines growing left to right from their start date.
+**Why.** Every element competed at equal weight, so the view read as a static diagram rather than
+something worth opening. Live work is the reason to look at a timeline, so it is the only status
+that gets full weight. The draw-in is left-to-right because that is the axis the data is measured
+on — the motion says something true rather than decorating.
+**Cost.** Animation on a view that must stay smooth while panning. It runs only on mount, never on
+range changes, and uses `transform` and `opacity` exclusively so it stays on the compositor.
+`prefers-reduced-motion` removes it entirely rather than shortening it.
+
 ### DD-19 — One design document per feature
 **Decision.** `.docs/<feature>/design.md`, one folder per feature, rather than a single combined
 document.

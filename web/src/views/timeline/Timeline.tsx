@@ -27,7 +27,11 @@ import {
 import { STATUS_LABEL } from '../../components/StatusChip.js';
 import styles from './Timeline.module.css';
 
-const AXIS_HEIGHT = 34;
+// Two rows: the TODAY pill sits above the date labels rather than on top of
+// whichever label happens to be nearest.
+const AXIS_HEIGHT = 48;
+const TICK_LABEL_Y = 34;
+const FLAG_Y = 6;
 // Enough room for the last axis label, which is drawn to the right of its tick
 // and would otherwise be cut off at the canvas edge.
 const PADDING_RIGHT = 64;
@@ -283,7 +287,7 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
             </defs>
 
             {/* Axis */}
-            <g className={styles.axis} clipPath="url(#plot-clip)">
+            <g className={styles.axis} clipPath="url(#plot-clip)" data-testid="timeline-axis">
               {ticks.map((tick) => {
                 const tx = NAME_WIDTH + x(tick.date);
                 return (
@@ -295,7 +299,11 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
                       y2={height}
                       className={tick.major ? styles.gridMajor : styles.grid}
                     />
-                    <text x={tx + 4} y={20} className={tick.major ? styles.tickMajor : styles.tick}>
+                    <text
+                      x={tx + 4}
+                      y={TICK_LABEL_Y}
+                      className={tick.major ? styles.tickMajor : styles.tick}
+                    >
                       {tick.label}
                     </text>
                   </g>
@@ -308,23 +316,51 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
               <g clipPath="url(#plot-clip)">
                 <line
                   x1={NAME_WIDTH + todayX}
-                  y1={AXIS_HEIGHT - 6}
+                  y1={FLAG_Y + 15}
                   x2={NAME_WIDTH + todayX}
                   y2={height}
                   className={styles.todayLine}
                   data-testid="today-marker"
                 />
+                {/* A labelled pill, so "where is now" is answered without
+                    tracing a dashed line up to the axis. */}
+                {/* Clamped inside the plot, so the pill stays whole when today
+                    sits at either edge of the framed range. */}
+                <rect
+                  x={Math.min(
+                    Math.max(NAME_WIDTH + todayX - 21, NAME_WIDTH + 1),
+                    NAME_WIDTH + plotWidth + PADDING_RIGHT - 43,
+                  )}
+                  y={FLAG_Y}
+                  width={42}
+                  height={15}
+                  rx={7.5}
+                  className={styles.todayFlag}
+                />
+                <text
+                  x={Math.min(
+                    Math.max(NAME_WIDTH + todayX, NAME_WIDTH + 22),
+                    NAME_WIDTH + plotWidth + PADDING_RIGHT - 22,
+                  )}
+                  y={FLAG_Y + 11}
+                  className={styles.todayFlagText}
+                >
+                  TODAY
+                </text>
               </g>
             )}
 
             {/* Rows */}
             {rows.map((row, index) => {
               const y = AXIS_HEIGHT + index * rowHeight + rowHeight / 2;
+              /* Staggered entrance, capped: past ~20 rows the wait would be
+                 longer than the information is worth. */
+              const rowDelay = { '--row-delay': `${Math.min(index, 20) * 26}ms` } as React.CSSProperties;
 
               if (row.kind === 'group') {
                 const isCollapsed = collapsed.has(row.pageId);
                 return (
-                  <g key={`group-${row.pageId}`} className={styles.groupRow}>
+                  <g key={`group-${row.pageId}`} className={styles.groupRow} style={rowDelay}>
                     <rect
                       x={0}
                       y={y - rowHeight / 2}
@@ -405,7 +441,18 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
               const isDone = task.status === 'done';
 
               return (
-                <g key={task.id} className={styles.taskRow}>
+                <g key={task.id} className={styles.taskRow} style={rowDelay}>
+                  {/* Zebra striping, so the eye can track one line across a wide
+                      chart without losing its row. */}
+                  {index % 2 === 1 && (
+                    <rect
+                      x={0}
+                      y={y - rowHeight / 2}
+                      width={width}
+                      height={rowHeight}
+                      className={styles.rowStripe}
+                    />
+                  )}
                   <rect
                     x={0}
                     y={y - rowHeight / 2}
@@ -497,7 +544,7 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
                     {/* Update points (FR-5.4). Each is focusable, so the hover
                         card is reachable by keyboard as well as pointer. */}
                     {points.map((cluster, i) => (
-                      <g key={i}>
+                      <g key={i} className={styles.pointIn}>
                         <circle
                           cx={NAME_WIDTH + cluster.x}
                           cy={y}

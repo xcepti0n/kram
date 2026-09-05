@@ -1,9 +1,11 @@
 node_modules/
 dist/
-data/*.db
-data/*.db-shm
-data/*.db-wal
-data/backups/
+# Unanchored, so these match at any depth: the dev server resolves its data
+# directory relative to the workspace it runs from, not the repo root.
+**/data/*.db
+**/data/*.db-shm
+**/data/*.db-wal
+**/data/backups/
 .env
 .DS_Store
 test-results/

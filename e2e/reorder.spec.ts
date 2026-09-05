@@ -12,12 +12,18 @@ test.describe('ordering (FR-7)', () => {
 
     const handle = page.getByTestId('drag-handle-Charlie');
     const target = page.getByTestId('task-row-Alpha');
+
+    /* Read the target box before pressing, and wait for all three rows to be
+       present first. Measuring after mouse.down() samples a layout that dnd-kit
+       is already transforming, which made this test flaky. */
+    await expect(page.locator('[data-testid^="task-row-"]')).toHaveCount(3);
+    const box = (await target.boundingBox())!;
+
     await handle.hover();
     await page.mouse.down();
     // Several small moves: dnd-kit needs movement events to register a drag.
-    const box = await target.boundingBox();
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2, { steps: 12 });
-    await page.mouse.move(box!.x + box!.width / 2, box!.y + 2, { steps: 6 });
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2, { steps: 12 });
+    await page.mouse.move(box.x + box.width / 2, box.y + 2, { steps: 6 });
     await page.mouse.up();
 
     await expect

@@ -27,9 +27,9 @@ Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
 
 ## Status
 
-M0–M8 are complete: the app builds, runs and is covered by 118 unit and 48 Playwright tests.
-**M9 (Deployment) is the only milestone outstanding** — the systemd unit, the LXC runbook and a
-verified deploy. See the tracker.
+All milestones M0–M9 are implemented: the app builds, runs, deploys, and is covered by 122 unit
+and 48 Playwright tests. The one step that cannot be done from a dev machine is running the deploy
+against the actual Proxmox LXC — see `deploy/README.md`.
 
 ## Stack
 

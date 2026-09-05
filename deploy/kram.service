@@ -1,0 +1,59 @@
+[Unit]
+Description=Kram — personal task tracker
+Documentation=https://github.com/vaiibhav/kram
+# Ordering only. The app owns a local SQLite file and needs no network peer, so
+# this must not be a hard dependency: a boot with the network still settling
+# should still bring the app up.
+After=network-online.target
+Wants=network-online.target
+
+# These belong in [Unit], not [Service] — systemd ignores them in [Service],
+# which would silently disable the crash-loop protection. Five failures inside
+# a minute means the fault is not transient, so stop restarting and leave it
+# visible in `systemctl status`.
+StartLimitBurst=5
+StartLimitIntervalSec=60
+
+[Service]
+Type=simple
+User=kram
+Group=kram
+
+WorkingDirectory=/opt/kram
+# DATA_DIR resolves relative to WorkingDirectory when left unset, so the unit
+# states it explicitly rather than depending on where systemd happened to start.
+EnvironmentFile=/etc/kram.env
+ExecStart=/usr/bin/node server/dist/index.js
+
+Restart=always
+RestartSec=3
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kram
+
+# The process needs to read its own code and write exactly one directory.
+# Everything below is the difference between a compromised dependency owning
+# the container and it owning nothing.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=no
+# ProtectSystem=strict makes the whole filesystem read-only; this is the one
+# path that is not. Backups land here too, so it covers both.
+ReadWritePaths=/opt/kram/data
+
+# A single-user tracker on a home network. The cap exists to turn a runaway
+# import into a restart rather than an OOM that takes the container with it.
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

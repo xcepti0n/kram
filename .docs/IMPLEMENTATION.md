@@ -171,12 +171,17 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 ## M9 — Deployment (NFR-1)
 
-- [ ] `deploy/kram.service` — systemd unit, `Restart=always`, env file (DD-1)
-- [ ] `deploy/README.md` — LXC runbook: Node install, first deploy, backup, restore
-- [ ] Env configuration: `PORT`, `DATA_DIR`, `NODE_ENV`
-- [ ] Production build verified from a clean checkout
-- [ ] Migrations confirmed to run before the server accepts connections
-- [ ] Deploy verified end-to-end on the Proxmox LXC
+- [x] `deploy/kram.service` — systemd unit, `Restart=always`, env file (DD-1)
+- [x] `deploy/kram.env.example` — `PORT`, `HOST`, `DATA_DIR`, `NODE_ENV`
+- [x] `deploy/README.md` — LXC runbook: container, Node, first deploy, update, backup, restore
+- [x] Service hardening: `ProtectSystem=strict`, one `ReadWritePaths`, verified every write
+      the app makes lands under `DATA_DIR`
+- [x] Production build verified from a clean checkout (`npm ci && npm run build && npm start`)
+- [x] Migrations confirmed to run before the server accepts connections — asserted in
+      `server/src/deploy.test.ts` by polling from process start
+- [x] Legacy database adoption covered by a test that fails if the rename guard is removed (DD-28)
+- [x] `npm test` builds first, so a fresh checkout tests the artefact it just produced
+- [ ] Deploy verified end-to-end on the Proxmox LXC — **needs the actual host**
 
 ## Parked
 
@@ -205,4 +210,4 @@ decision references (`DD-*`) at `DESIGN.md`.
 | M6 Export & import | **Done** |
 | M7 Places | **Done**; arrival notifications parked |
 | M8 Testing | **Done** |
-| M9 Deployment | Not started |
+| M9 Deployment | **Done**, pending a run on the real LXC |

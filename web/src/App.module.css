@@ -39,6 +39,12 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: var(--letter-spacing-tight);
   color: var(--text);
+  /* Shrinkable and truncating: the sort control has an intrinsic width the
+     title would otherwise be crushed against on a narrow screen. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .headerActions {
@@ -46,6 +52,7 @@
   align-items: center;
   gap: var(--space-2);
   margin-left: auto;
+  flex-shrink: 0;
 }
 
 .sortSelect {
@@ -207,20 +214,19 @@
 
   .title {
     font-size: var(--font-size-lg);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .headerActions {
-    /* The sort control drops to its own line rather than crushing the title. */
-    order: 3;
-    width: 100%;
-    margin-left: 0;
   }
 
   .sortSelect {
-    min-height: 36px;
+    /* A native select sizes to its widest option, which on a 412px screen left
+       the title with 57px and an ellipsis. Cap it and truncate the option text
+       instead — the chosen mode stays readable, and the view keeps its name. */
+    max-width: 116px;
+    min-height: 38px;
+    text-overflow: ellipsis;
+  }
+
+  .sortNote {
+    display: none;
   }
 
   .scroller {

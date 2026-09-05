@@ -9,7 +9,8 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--ground);
+  /* No background: the body's ground and its gradient show through, so Neon's
+     ambient colour is visible behind the content (DD-22). */
 }
 
 .header {

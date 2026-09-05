@@ -1,4 +1,4 @@
-import type { CreatePageInput, CreateTaskInput, CreateUpdateInput, ImportMode, SortMode, StatusUpdate, TaskStatus, TaskWithChildren, UpdatePageInput, UpdateSettingsInput, UpdateTaskInput } from '@tasktracker/shared';
+import type { CreatePageInput, CreateTaskInput, CreateUpdateInput, ImportMode, CreatePlaceInput, SortMode, StatusUpdate, TaskStatus, TaskWithChildren, UpdatePageInput, UpdateSettingsInput, UpdateTaskInput } from '@tasktracker/shared';
 export declare class ApiError extends Error {
     status: number;
     issues?: {
@@ -50,6 +50,25 @@ export declare const api: {
     }) => Promise<{
         movedOrDeleted: number;
     }>;
+    listPlaces: () => Promise<({
+        id: string;
+        name: string;
+        created_at: string;
+        lat: number | null;
+        lng: number | null;
+        radius_m: number;
+    } & {
+        task_count: number;
+    })[]>;
+    createPlace: (input: CreatePlaceInput) => Promise<{
+        id: string;
+        name: string;
+        created_at: string;
+        lat: number | null;
+        lng: number | null;
+        radius_m: number;
+    }>;
+    deletePlace: (id: string) => Promise<void>;
     listTasks: (params: {
         page_id?: string;
         include_done?: boolean;
@@ -68,6 +87,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -86,6 +106,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -120,6 +141,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -154,6 +176,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -188,6 +211,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -226,6 +250,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -245,6 +270,7 @@ export declare const api: {
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -333,18 +359,19 @@ export declare const api: {
                 id: string;
                 occurred_on: string;
             }[];
+            place_id?: string | null | undefined;
         }[];
     }>;
     getSettings: () => Promise<{
         user_id: string;
-        theme: "calm" | "bold" | "dense";
+        theme: "calm" | "neon";
         mode: "light" | "dark" | "system";
         density: "comfortable" | "compact";
         hide_done: boolean;
     }>;
     updateSettings: (input: UpdateSettingsInput) => Promise<{
         user_id: string;
-        theme: "calm" | "bold" | "dense";
+        theme: "calm" | "neon";
         mode: "light" | "dark" | "system";
         density: "comfortable" | "compact";
         hide_done: boolean;
@@ -372,6 +399,7 @@ export declare const api: {
             description: string | null;
             created_on: string;
             completed_on: string | null;
+            place_id: string | null;
             location_label: string | null;
             location_lat: number | null;
             location_lng: number | null;
@@ -405,11 +433,20 @@ export declare const api: {
         }[];
         settings: {
             user_id: string;
-            theme: "calm" | "bold" | "dense";
+            theme: "calm" | "neon";
             mode: "light" | "dark" | "system";
             density: "comfortable" | "compact";
             hide_done: boolean;
         }[];
+        places?: {
+            id: string;
+            name: string;
+            created_at: string;
+            lat: number | null;
+            lng: number | null;
+            radius_m: number;
+            user_id: string;
+        }[] | undefined;
     }>;
     importData: (doc: unknown, mode: ImportMode) => Promise<{
         mode: ImportMode;
@@ -424,6 +461,7 @@ export declare const api: {
 /** Query keys, centralised so invalidation is consistent. */
 export declare const keys: {
     pages: readonly ["pages"];
+    places: readonly ["places"];
     tasks: (params?: object) => readonly ["tasks", object];
     task: (id: string) => readonly ["task", string];
     timeline: (params?: object) => readonly ["timeline", object];

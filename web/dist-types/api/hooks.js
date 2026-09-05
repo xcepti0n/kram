@@ -33,6 +33,18 @@ export function useTimeline(params) {
         queryFn: () => api.timeline(params),
     });
 }
+export function usePlaces() {
+    return useQuery({ queryKey: keys.places, queryFn: api.listPlaces });
+}
+export function useCreatePlace() {
+    const client = useQueryClient();
+    const toast = useToast();
+    return useMutation({
+        mutationFn: (input) => api.createPlace(input),
+        onSuccess: () => void client.invalidateQueries({ queryKey: keys.places }),
+        onError: (error) => toast.show(`Could not save place — ${error.message}`, 'error'),
+    });
+}
 export function useSettings() {
     return useQuery({ queryKey: keys.settings, queryFn: api.getSettings });
 }

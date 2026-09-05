@@ -13,7 +13,7 @@ import { SortableContext, sortableKeyboardCoordinates, verticalListSortingStrate
 import { TaskRow } from './TaskRow.js';
 import { TaskComposer } from './TaskComposer.js';
 import styles from './TaskList.module.css';
-export function TaskList({ tasks, pages, sort, showPageNames = false, selectedId, onSelect, onStatusChange, onDelete, onReorder, onCreate, composerPlaceholder, }) {
+export function TaskList({ tasks, pages, places = [], sort, showPageNames = false, selectedId, onSelect, onStatusChange, onDelete, onReorder, onCreate, composerPlaceholder, }) {
     // Local order lets the list settle instantly on drop while the write is in
     // flight; the query invalidation reconciles it afterwards.
     const [localOrder, setLocalOrder] = useState(null);
@@ -29,6 +29,7 @@ export function TaskList({ tasks, pages, sort, showPageNames = false, selectedId
         return out;
     }, [tasks, localOrder]);
     const pageById = useMemo(() => new Map(pages.map((p) => [p.id, p])), [pages]);
+    const placeById = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
     const draggable = sort === 'manual';
     const sensors = useSensors(
     // A small activation distance keeps a click from starting a drag, which
@@ -53,7 +54,7 @@ export function TaskList({ tasks, pages, sort, showPageNames = false, selectedId
     };
     return (_jsxs("div", { className: styles.root, children: [ordered.length === 0 ? (_jsx("p", { className: styles.empty, children: "Nothing here yet. Add the first task below." })) : (_jsx(DndContext, { sensors: sensors, collisionDetection: closestCenter, onDragEnd: handleDragEnd, modifiers: [restrictToVerticalAxis, restrictToParentElement], children: _jsx(SortableContext, { items: ordered.map((t) => t.id), strategy: verticalListSortingStrategy, children: _jsx("ul", { className: styles.list, "data-testid": "task-list", children: ordered.map((task) => {
                             const page = pageById.get(task.page_id);
-                            return (_jsx(TaskRow, { task: task, pageColour: page?.colour, pageName: showPageNames ? page?.name : undefined, draggable: draggable, selected: task.id === selectedId, onSelect: onSelect, onStatusChange: onStatusChange, onDelete: onDelete }, task.id));
+                            return (_jsx(TaskRow, { task: task, pageColour: page?.colour, pageName: showPageNames ? page?.name : undefined, placeName: task.place_id ? placeById.get(task.place_id)?.name : undefined, draggable: draggable, selected: task.id === selectedId, onSelect: onSelect, onStatusChange: onStatusChange, onDelete: onDelete }, task.id));
                         }) }) }) })), _jsx(TaskComposer, { onCreate: onCreate, placeholder: composerPlaceholder })] }));
 }
 //# sourceMappingURL=TaskList.js.map

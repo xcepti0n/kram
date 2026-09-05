@@ -4,7 +4,9 @@ import type {
   CreateUpdateInput,
   ExportDocument,
   ImportMode,
+  CreatePlaceInput,
   Page,
+  Place,
   Settings,
   SortMode,
   StatusEvent,
@@ -84,6 +86,14 @@ export const api = {
       `/api/pages/${id}${qs(policy as Record<string, string>)}`,
       { method: 'DELETE' },
     ),
+
+  /* ----------------------------------------------------------- places --- */
+  listPlaces: () => request<(Place & { task_count: number })[]>('/api/places'),
+
+  createPlace: (input: CreatePlaceInput) =>
+    request<Place>('/api/places', { method: 'POST', body: JSON.stringify(input) }),
+
+  deletePlace: (id: string) => request<void>(`/api/places/${id}`, { method: 'DELETE' }),
 
   /* ------------------------------------------------------------ tasks --- */
   listTasks: (params: {
@@ -173,6 +183,7 @@ export const api = {
 /** Query keys, centralised so invalidation is consistent. */
 export const keys = {
   pages: ['pages'] as const,
+  places: ['places'] as const,
   tasks: (params: object = {}) => ['tasks', params] as const,
   task: (id: string) => ['task', id] as const,
   timeline: (params: object = {}) => ['timeline', params] as const,

@@ -6,6 +6,7 @@ import type { FastifyInstance, FastifyReply } from 'fastify';
 import {
   changeStatusInput,
   createPageInput,
+  createPlaceInput,
   createTaskInput,
   createUpdateInput,
   editStatusEventInput,
@@ -14,6 +15,7 @@ import {
   positionInput,
   sortMode,
   updatePageInput,
+  updatePlaceInput,
   updateSettingsInput,
   updateTaskInput,
   type SortMode,
@@ -22,6 +24,7 @@ import { z } from 'zod';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
 import * as pages from '../services/pages.js';
+import * as places from '../services/places.js';
 import * as tasks from '../services/tasks.js';
 import { buildTimeline } from '../services/timeline.js';
 import { exportAll, importAll } from '../services/transfer.js';
@@ -119,6 +122,7 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
       assigned_to?: string;
       status?: string;
       location_label?: string;
+      place_id?: string;
       sort?: string;
     };
   }>('/api/tasks', async (request, reply) => {
@@ -131,6 +135,7 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
         assignedTo: q.assigned_to,
         status: q.status ? (q.status as never) : undefined,
         locationLabel: q.location_label,
+        placeId: q.place_id,
         sort,
       });
     } catch (error) {
@@ -243,6 +248,51 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
       return handle(reply, error);
     }
   });
+
+  /* ------------------------------------------------------------ places --- */
+
+  app.get('/api/places', async () => places.listPlaces(db, userId));
+
+  app.post('/api/places', async (request, reply) => {
+    try {
+      const input = createPlaceInput.parse(request.body);
+      return reply.code(201).send(places.createPlace(db, userId, input));
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  app.patch<{ Params: { id: string } }>('/api/places/:id', async (request, reply) => {
+    try {
+      const input = updatePlaceInput.parse(request.body);
+      return places.updatePlace(db, userId, request.params.id, input);
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/places/:id', async (request, reply) => {
+    try {
+      places.deletePlace(db, userId, request.params.id);
+      return reply.code(204).send();
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  /** Places whose radius contains a position, nearest first. The query the
+   *  planned "you are here, these match" panel is built on (DD-23). */
+  app.get<{ Querystring: { lat?: string; lng?: string } }>(
+    '/api/places/near',
+    async (request, reply) => {
+      const lat = Number(request.query.lat);
+      const lng = Number(request.query.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+        return reply.code(400).send({ error: 'lat and lng are required' });
+      }
+      return places.placesNear(db, userId, { lat, lng });
+    },
+  );
 
   /* ---------------------------------------------------------- timeline --- */
 

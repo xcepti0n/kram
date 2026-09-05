@@ -14,7 +14,11 @@ body,
 
 body {
   margin: 0;
-  background: var(--ground);
+  /* The gradient is a token, so Calm keeps a flat ground and Neon gets pools of
+     colour without either theme needing its own rule here. */
+  background-color: var(--ground);
+  background-image: var(--ground-gradient);
+  background-attachment: fixed;
   color: var(--text);
   font-family: var(--font-sans);
   font-size: var(--font-size-base);
@@ -34,6 +38,16 @@ h4,
 p,
 figure {
   margin: 0;
+}
+
+/* Headings take the theme's display face, which is where a theme's character
+   registers first. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-display);
+  letter-spacing: var(--letter-spacing-display);
 }
 
 button,

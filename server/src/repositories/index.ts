@@ -8,6 +8,7 @@
 import type { DB } from '../db/index.js';
 import type {
   Page,
+  Place,
   Settings,
   StatusEvent,
   StatusUpdate,
@@ -109,7 +110,8 @@ export function countPages(db: DB, userId: string): number {
 const TASK_COLUMNS = `
   t.id, t.page_id, t.created_by, t.assigned_to, t.title, t.description,
   t.status, t.colour, t.position, t.created_on, t.completed_on,
-  t.location_label, t.location_lat, t.location_lng, t.created_at, t.updated_at
+  t.place_id, t.location_label, t.location_lat, t.location_lng,
+  t.created_at, t.updated_at
 `;
 
 export interface ListTasksOptions {
@@ -118,6 +120,7 @@ export interface ListTasksOptions {
   assignedTo?: string;
   status?: TaskStatus;
   locationLabel?: string;
+  placeId?: string;
 }
 
 export function listTasks(db: DB, userId: string, options: ListTasksOptions = {}): Task[] {
@@ -142,6 +145,10 @@ export function listTasks(db: DB, userId: string, options: ListTasksOptions = {}
   if (options.locationLabel) {
     where.push('t.location_label = ?');
     params.push(options.locationLabel);
+  }
+  if (options.placeId) {
+    where.push('t.place_id = ?');
+    params.push(options.placeId);
   }
 
   // Always ordered by position; alternative sorts are applied in the service
@@ -172,9 +179,9 @@ export function insertTask(db: DB, task: Task): void {
   db.prepare(
     `INSERT INTO tasks (
        id, page_id, created_by, assigned_to, title, description, status, colour,
-       position, created_on, completed_on, location_label, location_lat,
-       location_lng, created_at, updated_at
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       position, created_on, completed_on, place_id, location_label,
+       location_lat, location_lng, created_at, updated_at
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     task.id,
     task.page_id,
@@ -187,6 +194,7 @@ export function insertTask(db: DB, task: Task): void {
     task.position,
     task.created_on,
     task.completed_on,
+    task.place_id,
     task.location_label,
     task.location_lat,
     task.location_lng,
@@ -197,8 +205,8 @@ export function insertTask(db: DB, task: Task): void {
 
 const MUTABLE_TASK_FIELDS = [
   'page_id', 'assigned_to', 'title', 'description', 'status', 'colour',
-  'position', 'created_on', 'completed_on', 'location_label', 'location_lat',
-  'location_lng',
+  'position', 'created_on', 'completed_on', 'place_id', 'location_label',
+  'location_lat', 'location_lng',
 ] as const;
 
 export function updateTask(
@@ -394,6 +402,85 @@ export function getStatusEvent(db: DB, userId: string, eventId: string): StatusE
 
 export function editStatusEvent(db: DB, eventId: string, occurredOn: string): void {
   db.prepare('UPDATE status_events SET occurred_on = ? WHERE id = ?').run(occurredOn, eventId);
+}
+
+/* -------------------------------------------------------------- places --- */
+
+export function listPlaces(db: DB, userId: string): Place[] {
+  return db
+    .prepare(
+      `SELECT id, name, lat, lng, radius_m, created_at
+         FROM places
+        WHERE user_id = ? AND deleted_at IS NULL
+        ORDER BY name COLLATE NOCASE`,
+    )
+    .all(userId) as Place[];
+}
+
+export function getPlace(db: DB, userId: string, placeId: string): Place | undefined {
+  return db
+    .prepare(
+      `SELECT id, name, lat, lng, radius_m, created_at
+         FROM places
+        WHERE user_id = ? AND id = ? AND deleted_at IS NULL`,
+    )
+    .get(userId, placeId) as Place | undefined;
+}
+
+/** Match by name, case-insensitively — saving "Office" twice should reuse the
+ *  first rather than creating a near-duplicate. */
+export function findPlaceByName(db: DB, userId: string, name: string): Place | undefined {
+  return db
+    .prepare(
+      `SELECT id, name, lat, lng, radius_m, created_at
+         FROM places
+        WHERE user_id = ? AND name = ? COLLATE NOCASE AND deleted_at IS NULL`,
+    )
+    .get(userId, name) as Place | undefined;
+}
+
+export function insertPlace(db: DB, place: Place, userId: string): void {
+  db.prepare(
+    `INSERT INTO places (id, user_id, name, lat, lng, radius_m, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(place.id, userId, place.name, place.lat, place.lng, place.radius_m, place.created_at);
+}
+
+export function updatePlace(
+  db: DB,
+  placeId: string,
+  fields: Partial<Pick<Place, 'name' | 'lat' | 'lng' | 'radius_m'>>,
+): void {
+  const entries = Object.entries(fields).filter(([, v]) => v !== undefined);
+  if (entries.length === 0) return;
+  const set = entries.map(([k]) => `${k} = ?`).join(', ');
+  db.prepare(`UPDATE places SET ${set} WHERE id = ?`).run(...entries.map(([, v]) => v), placeId);
+}
+
+/** Soft-delete a place and detach it from its tasks, so a task never points at
+ *  a place that is no longer listed. */
+export function softDeletePlace(db: DB, placeId: string, at: string): void {
+  db.transaction(() => {
+    db.prepare('UPDATE tasks SET place_id = NULL, updated_at = ? WHERE place_id = ?').run(
+      at,
+      placeId,
+    );
+    db.prepare('UPDATE places SET deleted_at = ? WHERE id = ?').run(at, placeId);
+  })();
+}
+
+/** How many live tasks reference each place — shown beside it when choosing. */
+export function placeTaskCounts(db: DB, userId: string): Map<string, number> {
+  const rows = db
+    .prepare(
+      `SELECT t.place_id AS id, COUNT(*) AS n
+         FROM tasks t
+         JOIN page_members m ON m.page_id = t.page_id
+        WHERE m.user_id = ? AND t.deleted_at IS NULL AND t.place_id IS NOT NULL
+        GROUP BY t.place_id`,
+    )
+    .all(userId) as { id: string; n: number }[];
+  return new Map(rows.map((r) => [r.id, r.n]));
 }
 
 /* ------------------------------------------------------------ settings --- */

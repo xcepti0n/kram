@@ -15,9 +15,10 @@ interface Props {
     onNavigate: (view: ViewKey) => void;
     onCreatePage: (name: string) => void;
     onRenamePage: (id: string, name: string) => void;
+    onReorderPage: (id: string, before_id: string | null, after_id: string | null) => void;
     open: boolean;
     onClose: () => void;
 }
-export declare function Sidebar({ pages, view, onNavigate, onCreatePage, onRenamePage, open, onClose, }: Props): import("react").JSX.Element;
+export declare function Sidebar({ pages, view, onNavigate, onCreatePage, onRenamePage, onReorderPage, open, onClose, }: Props): import("react").JSX.Element;
 export {};
 //# sourceMappingURL=Sidebar.d.ts.map

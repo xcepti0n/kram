@@ -457,6 +457,47 @@ stated working order and was wrong.
 **Cost.** A newly created task may be below the fold on a long page. The composer sits at the foot
 of the list, so it is created in view.
 
+### DD-21 — Theme is visual character; density owns size
+**Decision.** Collapse the three "themes" (Calm / Bold / Dense) into two genuinely visual ones —
+**Calm** and **Neon** — and let the existing density control own every size decision.
+**Why.** The original three differed mainly in spacing, type scale and row height, which is exactly
+what density already controls. Two knobs were doing one job, and neither changed how the app looked;
+the user's summary was that the themes "just change size, nothing else". Separating the axes gives
+each one a real job: density answers *how much fits on screen*, theme answers *what it feels like*.
+**Cost.** One fewer preset, and the `theme` column's accepted values change. Handled by a migration
+that maps `bold` and `dense` onto `calm`, since neither carried visual identity worth preserving.
+
+### DD-22 — Luminance over glassmorphism
+**Decision.** The Neon theme gets its character from saturated colour, gradient depth and glow —
+not from heavy backdrop blur. Blur is used only where a surface genuinely floats over content (the
+task sheet's scrim, dropdown menus), never on scrolling surfaces or the timeline.
+**Why.** The user asked for vibrancy that invites use, explicitly not "heavy UI operation".
+`backdrop-filter` forces the compositor to re-rasterise on every scroll and drag frame, which would
+cost most exactly where the app must stay smooth — timeline panning and drag-to-reorder. Colour and
+glow are free by comparison, and carry the same energy.
+**Cost.** Not the literal frosted-glass aesthetic. In exchange, the timeline keeps its frame budget.
+
+### DD-23 — Places as first-class records
+**Decision.** Promote location from three nullable columns on `tasks` to a `places` table (name,
+lat, lng, radius), with tasks referencing a place. Places are chosen from a type-to-filter list, or
+created from the device's current position.
+**Why.** The useful question is "what can I do while I am at the office" — and "the office" is a
+place you return to, not an address you look up each time. Named, reusable places answer that
+directly; per-task free-text coordinates do not, because two tasks at the same place would carry
+unrelated strings. It also makes the planned "you are at X, here is what matches" panel a query over
+places rather than a redesign, and gives arrival notifications a radius to trigger on.
+**Cost.** A table and a migration, plus a join on task reads. The old `location_label` is preserved
+as a fallback for tasks whose location is a note rather than a place.
+
+### DD-24 — No geocoding service
+**Decision.** No address search. Places are named by the user and located from the device.
+**Why.** Geocoding means calling an external service (Nominatim or similar) from a home server,
+which adds a network dependency, sends the user's search text off the machine, and needs rate-limit
+handling — for a lookup that is only needed once per place, and only when that place is somewhere
+the user is not. Saving the current position while standing there is both simpler and more accurate.
+**Cost.** A place the user has never visited must have its coordinates entered by hand, or be saved
+on first arrival. Rare, and the name alone is enough until then.
+
 ### DD-20 — `node:sqlite` rather than `better-sqlite3`
 **Decision.** Use Node's built-in `node:sqlite` module through a thin adapter
 (`server/src/db/sqlite.ts`) exposing the small surface the app needs.

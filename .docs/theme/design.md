@@ -1,103 +1,99 @@
 # Feature Design — Theming
 
 **Status:** Approved
-**Last updated:** 2026-09-04
+**Last updated:** 2026-09-05
 **Requirements:** FR-9 · **Parent:** [`../DESIGN.md`](../DESIGN.md)
 
-The requirement asks that a theme change how the view is *seen*, not merely its colours. So a theme
-here carries spacing, type scale, radius, line weight and motion as well as palette — Dense is a
-genuinely different reading experience, not a recolour.
+The requirement asks that a theme change how the view is *seen*, not merely its colours. It does
+that through palette, typeface and depth — while **how much fits on screen** is a separate axis
+entirely, owned by density.
 
 ---
 
 ## 1. Three composing axes
 
 ```
-theme    ∈ { calm, bold, dense }     character: spacing, type, radius, motion, geometry
+theme    ∈ { calm, neon }            visual character: palette, typeface, glow
 mode     ∈ { light, dark, system }   surface and text colour ramps
-density  ∈ { comfortable, compact }  multiplier over spacing and row heights
+density  ∈ { comfortable, compact }  how much fits on screen
 ```
 
-They compose rather than multiply: three themes × two modes × two densities is one resolution
-function, not twelve stylesheets.
+**Theme and density are separate concerns (DD-21).** An earlier design had three themes — Calm,
+Bold and Dense — that differed mainly in spacing and type scale, which is exactly what density
+already controls. Two knobs were doing one job, and neither changed how the app actually looked.
+Now density owns every size decision, and a theme changes only how the app *feels*.
 
-Resolution sets attributes on `<html>`, and CSS custom properties cascade from there:
+They compose rather than multiply: two themes × three modes × two densities is one resolution
+function, not twelve stylesheets. Resolution sets attributes on `<html>`, and CSS custom properties
+cascade from there:
 
 ```html
-<html data-theme="calm" data-mode="dark" data-density="comfortable">
+<html data-theme="neon" data-mode="dark" data-density="comfortable">
 ```
 
 ## 2. Tokens
 
 ```css
-:root[data-theme="calm"] {
-  --space-unit:    8px;
-  --radius:        8px;
-  --type-scale:    1.20;
-  --font-size-base: 15px;
-  --line-weight:   2px;      /* timeline */
-  --point-radius:  5px;      /* timeline */
-  --row-height:    44px;
-  --motion:        160ms;
-  --border-weight: 1px;
+/* Sizing lives on the density axis alone. */
+:root                         { --space-unit-base: 8px; --density-factor: 1; }
+:root[data-density='compact'] { --density-factor: 0.76; }
+:root {
+  --space-unit:  calc(var(--space-unit-base) * var(--density-factor));
+  --row-height:  calc(var(--row-height-base) * var(--density-factor));
 }
 
-:root[data-theme="bold"] {
-  --space-unit:    10px;
-  --radius:        14px;
-  --type-scale:    1.33;
-  --font-size-base: 16px;
-  --line-weight:   3.5px;
-  --point-radius:  7px;
-  --row-height:    56px;
-  --motion:        260ms;
-  --border-weight: 2px;
+/* Themes carry palette, typeface and depth — never measurements. */
+:root[data-theme='calm'] {
+  --font-display: 'Inter', system-ui, sans-serif;
+  --accent: #3d63dd;
+  --ground-gradient: none;
+  --accent-glow: transparent;
 }
-
-:root[data-theme="dense"] {
-  --space-unit:    4px;
-  --radius:        4px;
-  --type-scale:    1.12;
-  --font-size-base: 13px;
-  --line-weight:   1.5px;
-  --point-radius:  3.5px;
-  --row-height:    28px;
-  --motion:        100ms;
-  --border-weight: 1px;
-}
-
-:root[data-density="compact"] {
-  --space-unit: calc(var(--space-unit) * 0.75);
-  --row-height: calc(var(--row-height) * 0.8);
+:root[data-theme='neon'] {
+  --font-display: 'Space Grotesk', system-ui, sans-serif;
+  --accent: #635bff;
+  --accent-glow: rgb(99 91 255 / 0.3);
+  --ground-gradient: radial-gradient(1200px 700px at 12% -8%, rgb(99 91 255 / 0.1), transparent 60%);
 }
 ```
 
-Colour tokens resolve on the mode axis — surfaces, text ramps, borders, and the accent — while the
-task colour palette stays constant across modes, tuned to stay distinguishable on both light and
-dark grounds.
+**Derive, never self-reference.** The public geometry tokens come from a base value times a factor.
+Writing `--space-unit: calc(var(--space-unit) * 0.76)` instead is a self-reference, which CSS makes
+invalid at computed-value time: the token silently unsets and compact density does nothing at all.
+That bug shipped in an earlier revision and is why the derivation is explicit.
 
 **Components read variables only.** A hard-coded colour or pixel spacing silently breaks one theme
-and nothing else catches it, so a lint rule rejects literal colours and pixel spacing in component
-styles (DD-8).
+and nothing else catches it (DD-8).
 
-The timeline reads `--row-height`, `--line-weight` and `--point-radius` when computing geometry, so
-switching theme reflows the chart without touching its code.
+Colour tokens resolve on the mode axis — surfaces, text ramps, borders and the accent. The task
+colour palette is a theme token too: Calm's is tuned for a warm light ground, Neon's is saturated
+and luminous.
+
+The timeline reads `--timeline-row-height`, `--line-weight` and `--point-radius` when computing
+geometry, so switching theme or density reflows the chart without touching its code.
 
 ## 3. The three themes
 
-**Calm** — the default, built first and completely. Restrained palette, generous whitespace, strong
-typographic hierarchy, minimal motion. The reference implementation every component is built
-against.
+**Calm** — restrained and editorial. A warm off-white ground, Inter throughout, a single blue
+accent, minimal motion. Gets out of the way.
 
-**Bold** — saturated task colours, heavier weights, larger radii, pronounced motion. The timeline
-becomes a striking centerpiece; lines are thick and points large.
+**Neon** — vibrant and luminous. Space Grotesk for headings against Inter for body text, saturated
+violet and magenta accents, and an ambient gradient wash behind the whole page. In dark mode the
+ground is near-black with pools of colour behind it.
 
-**Dense** — reduced spacing, smaller type, tight rows. Maximises tasks visible at once, and turns
-the timeline into a compact multi-month overview.
+### 3.1 Typography carries the theme
 
-Bold and Dense are added *after* Calm is complete, as token files rather than component changes
-(FR-9.2). If either needs a component altered, that is a signal the component is under-tokenised —
-fix the component, not the theme.
+Each theme names its own typeface, and this does more than any other single choice to set a mood:
+a UI in the system stack alone reads as unfinished however good its colour is. Calm uses Inter for
+everything; Neon pairs Space Grotesk headings — geometric and slightly technical — with Inter body
+text. Both load from Google Fonts with a full system fallback, so nothing shifts if they fail.
+
+### 3.2 Luminance, not glass (DD-22)
+
+Neon's energy comes from saturated colour, gradients and glow rather than heavy backdrop blur.
+`backdrop-filter` forces the compositor to re-rasterise on every frame, which would cost most
+exactly where this app must stay smooth — timeline panning and drag-to-reorder. Blur appears only on
+surfaces that genuinely float and do not scroll.
 
 ## 4. Persistence — FR-9.4
 
@@ -110,8 +106,8 @@ The server response reconciles afterwards.
 
 ## 5. Settings UI
 
-A Settings view with a live preview: theme as three cards showing a miniature task row and timeline
-fragment in each, mode as a three-way toggle, density as a two-way toggle. Changes apply
+A Settings view with a live preview: each theme as a card showing a miniature task row and timeline
+fragment in its own palette, mode as a three-way toggle, density as a two-way toggle. Changes apply
 immediately — no save button (FR-10.3).
 
 ## 6. Accessibility
@@ -127,10 +123,10 @@ immediately — no save button (FR-10.3).
 
 | Case | Requirement |
 | --- | --- |
-| Each theme applies and changes measurable geometry | FR-9.2 |
+| Each theme applies, changing palette and typeface | FR-9.2 |
+| Density changes row height, independent of theme | FR-9.3, DD-21 |
 | Light, dark and system modes apply | FR-9.1 |
 | System mode follows `prefers-color-scheme` | FR-9.1 |
-| Density changes row height | FR-9.3 |
 | Choice persists across reload | FR-9.4 |
 | No flash of the wrong theme on load | §4 |
 | Timeline geometry responds to theme tokens | §2 |

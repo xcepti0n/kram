@@ -427,3 +427,8 @@
     width: 100vw;
   }
 }
+
+.placeField {
+  flex: 1;
+  min-width: 0;
+}

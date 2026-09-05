@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSegments, clusterPoints, levelForRange, panRange, rangeFor, scaleFor, ticksFor, zoomRange, ZOOM_SPAN, } from './geometry.js';
+import { buildSegments, fitRange, clusterPoints, levelForRange, panRange, rangeFor, scaleFor, ticksFor, zoomRange, ZOOM_SPAN, } from './geometry.js';
 describe('scaleFor', () => {
     const range = { from: '2026-08-01', to: '2026-08-31' };
     it('maps the range start to 0 and the end to the plot width', () => {
@@ -46,6 +46,39 @@ describe('rangeFor and zoom', () => {
         expect(levelForRange(rangeFor('week', '2026-09-04'))).toBe('week');
         expect(levelForRange(rangeFor('month', '2026-09-04'))).toBe('month');
         expect(levelForRange(rangeFor('quarter', '2026-09-04'))).toBe('quarter');
+    });
+});
+describe('fitRange', () => {
+    const TODAY = '2026-09-04';
+    it('falls back to a default window with no data', () => {
+        const range = fitRange([], TODAY);
+        expect(range.from < TODAY).toBe(true);
+        expect(range.to > TODAY).toBe(true);
+    });
+    it('frames the data with padding on both sides', () => {
+        const range = fitRange([{ from: '2026-08-01', to: '2026-08-31' }], TODAY);
+        expect(range.from < '2026-08-01').toBe(true);
+        expect(range.to > TODAY).toBe(true);
+    });
+    it('always keeps today in frame', () => {
+        // Everything finished months ago; today must still be visible, since it is
+        // the reference the whole chart is read against.
+        const range = fitRange([{ from: '2026-01-01', to: '2026-02-01' }], TODAY);
+        expect(range.from <= '2026-01-01').toBe(true);
+        expect(range.to >= TODAY).toBe(true);
+    });
+    it('widens a very narrow span to a readable minimum', () => {
+        const range = fitRange([{ from: TODAY, to: TODAY }], TODAY, 21);
+        const days = (new Date(range.to).getTime() - new Date(range.from).getTime()) / 86_400_000;
+        expect(days).toBeGreaterThanOrEqual(21);
+    });
+    it('spans the union of several tasks', () => {
+        const range = fitRange([
+            { from: '2026-07-01', to: '2026-07-20' },
+            { from: '2026-08-15', to: '2026-09-01' },
+        ], TODAY);
+        expect(range.from < '2026-07-01').toBe(true);
+        expect(range.to > TODAY).toBe(true);
     });
 });
 describe('ticksFor', () => {

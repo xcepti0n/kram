@@ -13,9 +13,8 @@ interface Props {
 }
 
 const THEME_OPTIONS = [
-  { value: 'calm', label: 'Calm', hint: 'Restrained, generous whitespace' },
-  { value: 'bold', label: 'Bold', hint: 'Saturated, heavier, more motion' },
-  { value: 'dense', label: 'Dense', hint: 'Compact, maximum on screen' },
+  { value: 'calm', label: 'Calm', hint: 'Quiet, editorial, stays out of the way' },
+  { value: 'neon', label: 'Neon', hint: 'Vivid colour, glow and depth' },
 ] as const;
 
 const MODE_OPTIONS = [
@@ -51,8 +50,8 @@ export function Settings({ settings, pages, onChange, onImport, onDeletePage }: 
       <section className={styles.section}>
         <h2 className={styles.heading}>Appearance</h2>
         <p className={styles.description}>
-          A theme changes how the app is laid out, not only its colours — spacing, type scale and the
-          timeline's own geometry all follow.
+          A theme sets the palette and the typeface. How much fits on screen is a separate
+          choice — that is what density controls, below.
         </p>
 
         <div className={styles.themeGrid}>
@@ -248,12 +247,8 @@ export function Settings({ settings, pages, onChange, onImport, onDeletePage }: 
 
 /** A miniature of the theme's character — rows and a timeline fragment — so the
  *  choice is made by looking rather than by reading. */
-function ThemePreview({ variant }: { variant: 'calm' | 'bold' | 'dense' }) {
-  const config = {
-    calm: { gap: 5, height: 6, radius: 3, line: 2.5, dot: 3 },
-    bold: { gap: 6, height: 9, radius: 5, line: 4, dot: 4.5 },
-    dense: { gap: 2.5, height: 3.5, radius: 1.5, line: 1.5, dot: 2 },
-  }[variant];
+function ThemePreview({ variant }: { variant: 'calm' | 'neon' }) {
+  const config = { gap: 5, height: 6, radius: 3, line: 2.5, dot: 3 };
 
   return (
     <svg viewBox="0 0 108 52" className={styles.preview} aria-hidden="true">

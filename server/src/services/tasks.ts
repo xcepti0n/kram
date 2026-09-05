@@ -125,6 +125,7 @@ export function createTask(db: DB, userId: string, input: CreateTaskInput): Task
     position: appendPosition(db, pageId),
     created_on: createdOn,
     completed_on: status === 'done' ? createdOn : null,
+    place_id: input.place_id ?? null,
     location_label: input.location_label ?? null,
     location_lat: input.location_lat ?? null,
     location_lng: input.location_lng ?? null,

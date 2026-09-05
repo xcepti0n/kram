@@ -8,6 +8,7 @@ interface Props {
   task: Task;
   pageColour?: string;
   pageName?: string;
+  placeName?: string;
   draggable: boolean;
   selected: boolean;
   onSelect: (id: string) => void;
@@ -19,6 +20,7 @@ export function TaskRow({
   task,
   pageColour,
   pageName,
+  placeName,
   draggable,
   selected,
   onSelect,
@@ -101,8 +103,8 @@ export function TaskRow({
       <span className={styles.title}>{task.title}</span>
 
       <div className={styles.meta}>
-        {task.location_label && (
-          <span className={styles.location} title={task.location_label}>
+        {(placeName ?? task.location_label) && (
+          <span className={styles.location} title={placeName ?? task.location_label ?? ''}>
             <svg viewBox="0 0 12 14" width="10" height="11" aria-hidden="true">
               <path
                 d="M6 13S1.5 8.5 1.5 5.5a4.5 4.5 0 019 0C10.5 8.5 6 13 6 13z"
@@ -112,7 +114,7 @@ export function TaskRow({
               />
               <circle cx="6" cy="5.4" r="1.6" fill="currentColor" />
             </svg>
-            {task.location_label}
+            {placeName ?? task.location_label}
           </span>
         )}
 

@@ -77,6 +77,7 @@ export function buildTimeline(db: DB, userId: string, query: TimelineQuery): Tim
     timelineTasks.push({
       id: task.id,
       page_id: task.page_id,
+      place_id: task.place_id,
       title: task.title,
       colour: task.colour,
       status: task.status,

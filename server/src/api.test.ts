@@ -507,6 +507,111 @@ describe('export and import (FR-11, DD-14)', () => {
   });
 });
 
+describe('places (DD-23)', () => {
+  it('creates a place and attaches it to a task', async () => {
+    const place = (await call('POST', '/api/places', { name: 'Office', lat: 51.5, lng: -0.12 }))
+      .body as { id: string; name: string; radius_m: number };
+    expect(place.name).toBe('Office');
+    expect(place.radius_m).toBe(150);
+
+    const task = (await call('POST', '/api/tasks', { title: 'Print forms', place_id: place.id }))
+      .body as { place_id: string };
+    expect(task.place_id).toBe(place.id);
+  });
+
+  it('reuses an existing place rather than duplicating by name', async () => {
+    const first = (await call('POST', '/api/places', { name: 'Office' })).body as { id: string };
+    const second = (await call('POST', '/api/places', { name: 'office' })).body as { id: string };
+    // Case-insensitive: the value of places is that they are shared, so saving
+    // the same name twice must attach to the first.
+    expect(second.id).toBe(first.id);
+    expect((await call('GET', '/api/places')).body as unknown[]).toHaveLength(1);
+  });
+
+  it('fills in coordinates on a place that had none', async () => {
+    const first = (await call('POST', '/api/places', { name: 'Office' })).body as { id: string };
+    await call('POST', '/api/places', { name: 'Office', lat: 51.5, lng: -0.12 });
+    const places = (await call('GET', '/api/places')).body as { id: string; lat: number }[];
+    expect(places).toHaveLength(1);
+    expect(places[0]!.id).toBe(first.id);
+    expect(places[0]!.lat).toBeCloseTo(51.5);
+  });
+
+  it('counts the tasks at each place', async () => {
+    const place = (await call('POST', '/api/places', { name: 'Hardware store' })).body as
+      { id: string };
+    await call('POST', '/api/tasks', { title: 'Buy screws', place_id: place.id });
+    await call('POST', '/api/tasks', { title: 'Buy paint', place_id: place.id });
+
+    const places = (await call('GET', '/api/places')).body as { task_count: number }[];
+    expect(places[0]!.task_count).toBe(2);
+  });
+
+  it('filters tasks by place', async () => {
+    const office = (await call('POST', '/api/places', { name: 'Office' })).body as { id: string };
+    await call('POST', '/api/tasks', { title: 'At the office', place_id: office.id });
+    await call('POST', '/api/tasks', { title: 'Anywhere' });
+
+    const atOffice = (await call('GET', `/api/tasks?place_id=${office.id}`)).body as
+      { title: string }[];
+    expect(atOffice.map((t) => t.title)).toEqual(['At the office']);
+  });
+
+  it('detaches a place from its tasks when deleted, keeping the tasks', async () => {
+    const place = (await call('POST', '/api/places', { name: 'Gone' })).body as { id: string };
+    const task = (await call('POST', '/api/tasks', { title: 'Survivor', place_id: place.id }))
+      .body as { id: string };
+
+    expect((await call('DELETE', `/api/places/${place.id}`)).status).toBe(204);
+    const after = (await call('GET', `/api/tasks/${task.id}`)).body as { place_id: null };
+    expect(after.place_id).toBeNull();
+  });
+
+  it('finds places within their radius of a position', async () => {
+    // Radius 150m by default; a point ~50m away is inside, ~5km is not.
+    await call('POST', '/api/places', { name: 'Here', lat: 51.5, lng: -0.12 });
+    await call('POST', '/api/places', { name: 'Far', lat: 51.55, lng: -0.12 });
+
+    const near = (await call('GET', '/api/places/near?lat=51.5004&lng=-0.12')).body as
+      { name: string; distance_m: number }[];
+    expect(near.map((p) => p.name)).toEqual(['Here']);
+    expect(near[0]!.distance_m).toBeLessThan(150);
+  });
+
+  it('rejects a nearby query without coordinates', async () => {
+    expect((await call('GET', '/api/places/near')).status).toBe(400);
+  });
+
+  it('round-trips places through export and import', async () => {
+    const place = (await call('POST', '/api/places', { name: 'Office', lat: 51.5, lng: -0.12 }))
+      .body as { id: string };
+    await call('POST', '/api/tasks', { title: 'At work', place_id: place.id });
+
+    const doc = (await call('GET', '/api/export')).body as { places: unknown[] };
+    expect(doc.places).toHaveLength(1);
+
+    await call('POST', '/api/import?mode=replace', doc);
+    const after = (await call('GET', '/api/places')).body as { name: string }[];
+    expect(after.map((p) => p.name)).toEqual(['Office']);
+    const tasks = (await call('GET', '/api/tasks')).body as { place_id: string }[];
+    expect(tasks[0]!.place_id).toBe(place.id);
+  });
+});
+
+describe('page ordering (FR-6.2)', () => {
+  it('reorders pages by neighbour id and persists', async () => {
+    const b = (await call('POST', '/api/pages', { name: 'Beta' })).body as { id: string };
+    const c = (await call('POST', '/api/pages', { name: 'Gamma' })).body as { id: string };
+    const before = (await call('GET', '/api/pages')).body as { id: string }[];
+    expect(before.map((p) => p.id)).toEqual([pageId, b.id, c.id]);
+
+    // Move Gamma to the very top.
+    await call('PATCH', `/api/pages/${c.id}/position`, { after_id: pageId });
+    const after = (await call('GET', '/api/pages')).body as { id: string }[];
+    expect(after[0]!.id).toBe(c.id);
+  });
+});
+
 describe('settings (FR-9.4)', () => {
   it('returns defaults and persists changes', async () => {
     const initial = (await call('GET', '/api/settings')).body as Record<string, unknown>;
@@ -514,14 +619,14 @@ describe('settings (FR-9.4)', () => {
     expect(initial.mode).toBe('system');
     expect(initial.density).toBe('comfortable');
 
-    await call('PATCH', '/api/settings', { theme: 'dense', mode: 'dark', hide_done: true });
+    await call('PATCH', '/api/settings', { theme: 'neon', mode: 'dark', hide_done: true });
     const after = (await call('GET', '/api/settings')).body as Record<string, unknown>;
-    expect(after.theme).toBe('dense');
+    expect(after.theme).toBe('neon');
     expect(after.mode).toBe('dark');
     expect(after.hide_done).toBe(true);
   });
 
   it('rejects an unknown theme', async () => {
-    expect((await call('PATCH', '/api/settings', { theme: 'neon' })).status).toBe(400);
+    expect((await call('PATCH', '/api/settings', { theme: 'vaporwave' })).status).toBe(400);
   });
 });

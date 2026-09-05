@@ -27,6 +27,42 @@ export function rangeFor(level, anchor) {
     const back = Math.round(span * 0.8);
     return { from: addDays(anchor, -back), to: addDays(anchor, span - back) };
 }
+/**
+ * A range that frames the data, with a little breathing room.
+ *
+ * Opening on a fixed window means a tracker whose work spans six weeks renders
+ * into a tenth of the canvas — technically correct and practically useless. The
+ * default view should show what there is to see.
+ */
+export function fitRange(spans, todayDate, minimumDays = 21) {
+    if (spans.length === 0)
+        return rangeFor('week', todayDate);
+    let earliest = spans[0].from;
+    let latest = spans[0].to;
+    for (const span of spans) {
+        if (span.from < earliest)
+            earliest = span.from;
+        if (span.to > latest)
+            latest = span.to;
+    }
+    // Always keep today in frame: it is the reference the whole view is read against.
+    if (todayDate < earliest)
+        earliest = todayDate;
+    if (todayDate > latest)
+        latest = todayDate;
+    const span = Math.max(1, daysBetween(earliest, latest));
+    const padding = Math.max(2, Math.round(span * 0.06));
+    let from = addDays(earliest, -padding);
+    let to = addDays(latest, padding);
+    // Widen a very short span so a single new task does not fill the screen.
+    const width = daysBetween(from, to);
+    if (width < minimumDays) {
+        const extra = Math.ceil((minimumDays - width) / 2);
+        from = addDays(from, -extra);
+        to = addDays(to, extra);
+    }
+    return { from, to };
+}
 /** Shift a range by a number of days, keeping its width. */
 export function panRange(range, days) {
     return { from: addDays(range.from, days), to: addDays(range.to, days) };

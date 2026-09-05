@@ -18,42 +18,59 @@ worse than not having one, because it would be trusted.
 
 Storing the data now means it accumulates from day one and is ready when a workable trigger exists.
 
-## 2. Schema
+## 2. Places, not per-task locations (DD-23)
 
-Three nullable columns on `tasks`:
+A place is somewhere you return to: the office, the hardware store, home. It is a record in its own
+right, and tasks reference it.
 
 ```
-location_label  TEXT, null      "Hardware store", "Office"
-location_lat    REAL, null
-location_lng    REAL, null
+places
+├── id         PK
+├── user_id    FK → users
+├── name       TEXT        "Office"
+├── lat        REAL, null
+├── lng        REAL, null
+├── radius_m   INTEGER     default 150; the trigger radius when alerts exist
+└── created_at
+
+tasks.place_id  FK → places, null
 ```
 
-A label without coordinates is allowed — *"in the garage"* is a useful note even without a point on
-a map. Coordinates without a label are back-filled with a formatted coordinate string for display.
+**Why not free text on each task.** The useful question is *"what can I do while I am at the
+office"*. Two tasks at the same place must therefore resolve to the same thing — unrelated strings
+cannot answer that, and neither can coordinates entered twice. Naming a place once and attaching
+tasks to it also makes the planned "you are at X, these match" panel a query rather than a redesign.
 
-Kept as columns rather than a separate table because a task has at most one location, and a join for
-three nullable fields would earn nothing.
+`tasks.location_label` survives as a fallback for a location that is a note rather than a place
+("in the garage").
 
-## 3. Capture
+## 3. Capture (DD-24)
 
-Low friction matters here or it will not be used (FR-10):
+The interaction is **choose, not describe**:
 
-- **"Use my current location"** — one tap, via the browser geolocation API, filling coordinates and
-  leaving the label for the user.
-- **Free-text label** — typed, no coordinates needed.
-- **Saved places** — labels already used on other tasks are offered as autocomplete, so *"Hardware
-  store"* is typed once and reused with its coordinates.
+- **Type to filter** the places already saved, ordered by how many tasks use them — the place you
+  attach work to most is the one you probably want.
+- **Create** appears only when nothing matches what you typed.
+- **"Use where I am"** saves the current position under the typed name, via the browser geolocation
+  API. Permission is asked for on that press, never on load.
 
-Permission is requested only when the button is pressed, never on load.
+**No address search.** Geocoding means calling an external service from the home server, sending
+search text off the machine, and handling rate limits — for a lookup needed once per place, and only
+for a place you are not at. Saving the position while standing there is simpler and more accurate.
+The cost is that a place you have never visited needs its coordinates typed or saved on first
+arrival; until then the name alone is enough.
 
 ## 4. Display and filtering — FR-8.2
 
-The task row shows a small location chip when a location is set. The side sheet shows the label and,
-where coordinates exist, a link opening the platform's map application.
+The task row shows a place chip when one is set. In the picker, a place with coordinates carries a
+small dot: it can eventually trigger an arrival alert, where a name-only place cannot.
 
-The task list filters by location label. This is the useful behaviour today: *"show me everything I
-need to do at the hardware store"* before setting off, which delivers most of the practical value of
-the notification feature without needing background execution.
+`GET /api/tasks?place_id=` filters to one place — *"show me everything I need to do at the hardware
+store"* before setting off. That delivers most of the practical value of arrival notifications
+without needing background execution.
+
+`GET /api/places/near?lat=&lng=` returns places whose radius contains a position, nearest first.
+Nothing calls it yet; it is the query the suggestion panel below is built on.
 
 ## 5. Future prioritisation
 
@@ -78,17 +95,24 @@ The plausible shapes:
 The first is most likely: the operating system already does geofencing well, and the app only needs
 to receive a webhook and decide what to say.
 
-**Schema impact when built.** Additive — a `radius_m` column on tasks, and a `geofences` table if a
-place is ever shared by several tasks. No existing table changes shape.
+**Schema impact when built.** None. `places.radius_m` already exists and `/api/places/near` already
+answers the question; what is missing is only the trigger that calls it.
+
+**The planned panel.** A third view beside Overview and Timeline: read the device position once,
+call `/api/places/near`, and list the open tasks at whichever places match. That is a view over
+existing endpoints, which is the point of modelling places as records.
 
 ## 7. Testing
 
 | Case | Requirement |
 | --- | --- |
-| Set a location label with no coordinates | FR-8.1 |
-| Set coordinates via the current-location button (mocked) | §3 |
-| Location chip appears on the row when set | FR-8.2 |
-| Filter the list by location label | FR-8.2 |
-| Clearing a location removes it | FR-8.1 |
-| Label autocomplete offers previously used places | §3 |
-| Export and import round-trip location fields | `../data/design.md` |
+| Create a place from the picker and attach it | FR-8.1 |
+| Saving the same name twice reuses the first place | DD-23 |
+| A place created without coordinates gains them later | DD-23 |
+| Filtering the picker as you type | §3 |
+| Place chip appears on the task row | FR-8.2 |
+| Removing a place from a task | FR-8.1 |
+| `?place_id=` filters the task list | FR-8.2 |
+| Deleting a place detaches it but keeps the tasks | DD-23 |
+| `/api/places/near` respects each place's radius | §6 |
+| Export and import round-trip places and their task links | `../data/design.md` |

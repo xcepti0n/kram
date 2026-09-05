@@ -18,7 +18,7 @@ export const SORT_MODES = ['manual', 'created', 'status', 'title'] as const;
 export const sortMode = z.enum(SORT_MODES);
 export type SortMode = z.infer<typeof sortMode>;
 
-export const THEMES = ['calm', 'bold', 'dense'] as const;
+export const THEMES = ['calm', 'neon'] as const;
 export const MODES = ['light', 'dark', 'system'] as const;
 export const DENSITIES = ['comfortable', 'compact'] as const;
 
@@ -61,6 +61,38 @@ export const positionInput = z
   );
 export type PositionInput = z.infer<typeof positionInput>;
 
+/* --------------------------------------------------------------- places --- */
+
+/** Somewhere you return to (DD-23). Named once, attached to many tasks, and the
+ *  unit a future "you are here, these match" panel queries against. */
+export const placeSchema = z.object({
+  id,
+  name: z.string().min(1).max(120),
+  lat: z.number().min(-90).max(90).nullable(),
+  lng: z.number().min(-180).max(180).nullable(),
+  radius_m: z.number().int().min(10).max(50_000),
+  created_at: z.string(),
+});
+export type Place = z.infer<typeof placeSchema>;
+
+export const createPlaceInput = z.object({
+  name: z.string().min(1).max(120),
+  lat: z.number().min(-90).max(90).nullish(),
+  lng: z.number().min(-180).max(180).nullish(),
+  radius_m: z.number().int().min(10).max(50_000).optional(),
+});
+export type CreatePlaceInput = z.infer<typeof createPlaceInput>;
+
+export const updatePlaceInput = z
+  .object({
+    name: z.string().min(1).max(120),
+    lat: z.number().min(-90).max(90).nullable(),
+    lng: z.number().min(-180).max(180).nullable(),
+    radius_m: z.number().int().min(10).max(50_000),
+  })
+  .partial();
+export type UpdatePlaceInput = z.infer<typeof updatePlaceInput>;
+
 /* ---------------------------------------------------------------- tasks --- */
 
 export const locationSchema = z.object({
@@ -102,6 +134,8 @@ export const taskSchema = z.object({
   position: z.string().min(1),
   created_on: isoDate,
   completed_on: isoDate.nullable(),
+  place_id: id.nullable(),
+  // Kept for a location that is a note rather than a place ("in the garage").
   location_label: z.string().max(200).nullable(),
   location_lat: z.number().nullable(),
   location_lng: z.number().nullable(),
@@ -125,6 +159,7 @@ export const createTaskInput = z.object({
   status: taskStatus.optional(),
   colour: colour.optional(),
   created_on: isoDate.optional(),
+  place_id: id.nullish(),
   location_label: z.string().max(200).nullish(),
   location_lat: z.number().min(-90).max(90).nullish(),
   location_lng: z.number().min(-180).max(180).nullish(),
@@ -139,6 +174,7 @@ export const updateTaskInput = z
     created_on: isoDate,
     page_id: id,
     assigned_to: id.nullable(),
+    place_id: id.nullable(),
     location_label: z.string().max(200).nullable(),
     location_lat: z.number().min(-90).max(90).nullable(),
     location_lng: z.number().min(-180).max(180).nullable(),
@@ -190,6 +226,7 @@ export type UpdateSettingsInput = z.infer<typeof updateSettingsInput>;
 export const timelineTask = z.object({
   id,
   page_id: id,
+  place_id: id.nullable().optional(),
   title: z.string(),
   colour,
   status: taskStatus,
@@ -221,6 +258,7 @@ export const exportDocument = z.object({
   exported_at: z.string(),
   users: z.array(z.object({ id, name: z.string(), created_at: z.string() })),
   pages: z.array(pageSchema.extend({ members: z.array(id) })),
+  places: z.array(placeSchema.extend({ user_id: id })).optional(),
   tasks: z.array(
     taskSchema.extend({
       deleted_at: z.string().nullish(),

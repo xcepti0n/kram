@@ -99,6 +99,13 @@ export function exportAll(db: DB, includeDeleted = false): ExportDocument {
     };
   });
 
+  const places = db
+    .prepare(
+      `SELECT id, user_id, name, lat, lng, radius_m, created_at
+         FROM places WHERE deleted_at IS NULL ORDER BY name`,
+    )
+    .all();
+
   const settings = (
     db.prepare('SELECT * FROM settings').all() as {
       user_id: string;
@@ -115,6 +122,7 @@ export function exportAll(db: DB, includeDeleted = false): ExportDocument {
     exported_at: new Date().toISOString(),
     users,
     pages,
+    places,
     tasks,
     settings,
   };
@@ -193,6 +201,7 @@ export function importAll(
       db.exec('DELETE FROM status_events');
       db.exec('DELETE FROM status_updates');
       db.exec('DELETE FROM tasks');
+      db.exec('DELETE FROM places');
       db.exec('DELETE FROM page_members');
       db.exec('DELETE FROM pages');
       db.exec('DELETE FROM settings');
@@ -231,6 +240,17 @@ export function importAll(
       }
     }
 
+    const placeExists = db.prepare('SELECT 1 FROM places WHERE id = ?');
+    for (const place of doc.places ?? []) {
+      const placeId = idFor(place.id);
+      if (mode !== 'replace' && placeExists.get(placeId)) continue;
+      if (!userExists.get(place.user_id)) continue;
+      db.prepare(
+        `INSERT INTO places (id, user_id, name, lat, lng, radius_m, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      ).run(placeId, place.user_id, place.name, place.lat, place.lng, place.radius_m, place.created_at);
+    }
+
     const taskExists = db.prepare('SELECT 1 FROM tasks WHERE id = ?');
     for (const task of doc.tasks) {
       const taskId = idFor(task.id);
@@ -242,9 +262,9 @@ export function importAll(
       db.prepare(
         `INSERT INTO tasks (
            id, page_id, created_by, assigned_to, title, description, status, colour,
-           position, created_on, completed_on, location_label, location_lat,
-           location_lng, created_at, updated_at, deleted_at
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           position, created_on, completed_on, place_id, location_label,
+           location_lat, location_lng, created_at, updated_at, deleted_at
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       ).run(
         taskId,
         pageId,
@@ -257,6 +277,7 @@ export function importAll(
         task.position,
         task.created_on,
         task.completed_on,
+        task.place_id ? idFor(task.place_id) : null,
         task.location_label,
         task.location_lat,
         task.location_lng,

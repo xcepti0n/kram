@@ -1,141 +1,69 @@
 /**
- * Theme tokens (FR-9, DD-8).
+ * Theme tokens (FR-9, DD-8, DD-21, DD-22).
  *
  * Three axes compose at runtime, set as attributes on <html>:
- *   data-theme    calm | bold | dense    character: spacing, type, geometry
+ *   data-theme    calm | neon            visual character: palette, type, glow
  *   data-mode     light | dark | system  colour ramps
- *   data-density  comfortable | compact  multiplier over spacing
+ *   data-density  comfortable | compact  how much fits on screen
+ *
+ * Theme and density are deliberately separate concerns (DD-21). Density owns
+ * every size decision; a theme changes how the app *feels* — its palette, its
+ * typeface, its depth — and never its measurements. An earlier design had three
+ * "themes" that differed only in spacing, which is what density already does.
  *
  * Components read these variables and never hard-code a value. A single literal
  * colour silently breaks one theme and nothing else would catch it.
  */
 
-/* ---------------------------------------------------------- structure --- */
-/* Character tokens. These are what make a theme a different *reading*
-   experience rather than a recolour. */
+/* ------------------------------------------------------------ typography --- */
+/* Each theme carries its own typeface. Type does more than any other single
+   choice to set a mood, and a UI in the system stack alone reads as unfinished
+   however good its colour is. Both faces are variable, loaded from Google Fonts
+   with a full system fallback so nothing shifts if they fail. */
 
-:root,
-:root[data-theme='calm'] {
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..800&family=Space+Grotesk:wght@400..700&family=JetBrains+Mono:wght@400..600&display=swap');
+
+/* ------------------------------------------------------------- structure --- */
+
+:root {
+  /* Sizing lives on the density axis alone (DD-21). */
   --space-unit-base: 8px;
-  --radius: 8px;
-  --radius-sm: 5px;
-  --radius-lg: 14px;
-
-  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-    'Helvetica Neue', Arial, sans-serif;
-  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace;
-  --font-size-base: 14.5px;
-  --font-size-sm: 12.5px;
-  --font-size-xs: 11.5px;
-  --font-size-lg: 17px;
-  --font-size-xl: 22px;
-  --font-weight-normal: 420;
-  --font-weight-medium: 530;
-  --font-weight-bold: 640;
-  --letter-spacing-tight: -0.011em;
-  --letter-spacing-wide: 0.04em;
-  --line-height: 1.5;
-
   --row-height-base: 42px;
-  --border-weight: 1px;
-  --motion: 160ms;
-  --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+  --timeline-row-height-base: 40px;
+  --font-size-base-raw: 14.5px;
 
-  /* Timeline geometry — read directly by the SVG renderer. */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 16px;
+  --radius-pill: 999px;
+
+  --line-height: 1.5;
+  --border-weight: 1px;
+
   --line-weight: 2.5px;
   --point-radius: 5px;
-  --timeline-row-height-base: 40px;
 
-  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.09), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.16), 0 4px 12px -4px rgb(0 0 0 / 0.08);
-}
-
-:root[data-theme='bold'] {
-  --space-unit-base: 9px;
-  --radius: 14px;
-  --radius-sm: 9px;
-  --radius-lg: 22px;
-
-  --font-size-base: 15.5px;
-  --font-size-sm: 13px;
-  --font-size-xs: 12px;
-  --font-size-lg: 20px;
-  --font-size-xl: 30px;
-  --font-weight-normal: 460;
-  --font-weight-medium: 600;
-  --font-weight-bold: 760;
-  --letter-spacing-tight: -0.025em;
-  --line-height: 1.45;
-
-  --row-height-base: 54px;
-  --border-weight: 1.5px;
-  --motion: 260ms;
-  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
-
-  --line-weight: 4px;
-  --point-radius: 7px;
-  --timeline-row-height-base: 54px;
-
-  --shadow-sm: 0 2px 4px rgb(0 0 0 / 0.07);
-  --shadow-md: 0 8px 20px -4px rgb(0 0 0 / 0.14), 0 3px 6px -3px rgb(0 0 0 / 0.08);
-  --shadow-lg: 0 24px 56px -12px rgb(0 0 0 / 0.22), 0 8px 16px -8px rgb(0 0 0 / 0.12);
-}
-
-:root[data-theme='dense'] {
-  --space-unit-base: 5px;
-  --radius: 4px;
-  --radius-sm: 3px;
-  --radius-lg: 7px;
-
-  --font-size-base: 13px;
-  --font-size-sm: 11.5px;
-  --font-size-xs: 10.5px;
-  --font-size-lg: 14.5px;
-  --font-size-xl: 18px;
-  --font-weight-normal: 420;
-  --font-weight-medium: 550;
-  --font-weight-bold: 660;
-  --letter-spacing-tight: -0.006em;
-  --line-height: 1.4;
-
-  --row-height-base: 28px;
-  --border-weight: 1px;
-  --motion: 90ms;
-  --motion-ease: cubic-bezier(0.4, 0, 0.2, 1);
-
-  --line-weight: 1.75px;
-  --point-radius: 3.5px;
-  --timeline-row-height-base: 26px;
-
-  --shadow-sm: 0 1px 1px rgb(0 0 0 / 0.05);
-  --shadow-md: 0 2px 8px -2px rgb(0 0 0 / 0.1);
-  --shadow-lg: 0 12px 28px -8px rgb(0 0 0 / 0.16);
-}
-
-/* Density scales the theme's base values.
- *
- * The multiplier is a separate token rather than a redefinition of --space-unit
- * itself: `--x: calc(var(--x) * 0.72)` is a self-reference, which CSS makes
- * invalid at computed-value time, silently unsetting the token. Deriving the
- * public token once, from a base and a factor, keeps both axes composable. */
-:root {
-  --density-factor: 1;
+  --sidebar-width: 236px;
+  --sheet-width: 470px;
 }
 
 :root[data-density='compact'] {
   --density-factor: 0.76;
 }
 
-/* Public geometry tokens — components read these, never the *-base values. */
+:root {
+  --density-factor: 1;
+}
+
+/* Public geometry — components read these, never the *-base values. Derived
+   once from a base and a factor, since `--x: calc(var(--x) * n)` is a
+   self-reference that CSS discards at computed-value time. */
 :root {
   --space-unit: calc(var(--space-unit-base) * var(--density-factor));
   --row-height: calc(var(--row-height-base) * var(--density-factor));
   --timeline-row-height: calc(var(--timeline-row-height-base) * var(--density-factor));
-}
+  --font-size-base: calc(var(--font-size-base-raw) * (0.5 + var(--density-factor) * 0.5));
 
-/* Derived spacing scale — every margin and padding in the app comes from here. */
-:root {
   --space-1: calc(var(--space-unit) * 0.5);
   --space-2: var(--space-unit);
   --space-3: calc(var(--space-unit) * 1.5);
@@ -144,163 +72,375 @@
   --space-6: calc(var(--space-unit) * 4);
   --space-8: calc(var(--space-unit) * 6);
 
-  --sidebar-width: 232px;
-  --sheet-width: 460px;
+  --font-size-sm: calc(var(--font-size-base) * 0.87);
+  --font-size-xs: calc(var(--font-size-base) * 0.79);
+  --font-size-lg: calc(var(--font-size-base) * 1.2);
+  --font-size-xl: calc(var(--font-size-base) * 1.55);
+  --font-size-2xl: calc(var(--font-size-base) * 2.1);
 }
 
-/* -------------------------------------------------------------- light --- */
-/* Calm's light palette: a warm off-white ground rather than pure white, so long
-   sessions are easier on the eye and elevated surfaces can be brighter, not
-   darker, than the page. */
+/* ================================================================== CALM === */
+/* Restrained and editorial. Inter for the interface, with tight tracking on
+   headings so they read as considered rather than default. */
 
-:root {
-  --ground: #f7f6f4;
+:root,
+:root[data-theme='calm'] {
+  --font-sans: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-display: var(--font-sans);
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --font-weight-normal: 420;
+  --font-weight-medium: 530;
+  --font-weight-bold: 650;
+  --font-weight-display: 700;
+  --letter-spacing-tight: -0.014em;
+  --letter-spacing-display: -0.03em;
+  --letter-spacing-wide: 0.05em;
+  --text-transform-label: uppercase;
+
+  --motion: 170ms;
+  --motion-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* Surfaces: a warm off-white ground, so elevated surfaces can be brighter
+     rather than darker than the page. */
+  --ground: #f6f5f3;
+  --ground-gradient: none;
   --surface: #fffefd;
   --surface-raised: #ffffff;
-  --surface-sunken: #efedea;
-  --surface-hover: #f2f0ed;
-  --surface-active: #eae7e3;
+  --surface-sunken: #eeecea;
+  --surface-hover: #f2f0ee;
+  --surface-active: #e9e6e3;
+  --surface-translucent: rgb(255 255 255 / 0.86);
 
-  --text: #1c1b19;
-  --text-secondary: #5f5c57;
-  --text-muted: #8b8781;
-  --text-faint: #b3aea7;
+  --text: #1b1a18;
+  --text-secondary: #5d5a55;
+  --text-muted: #8a8680;
+  --text-faint: #b2ada6;
   --text-on-accent: #ffffff;
 
-  --border: #e3e0dc;
-  --border-strong: #cfcbc5;
-  --border-focus: var(--accent);
+  --border: #e4e1dd;
+  --border-strong: #ceccc6;
 
   --accent: #3d63dd;
-  --accent-hover: #3355c4;
-  --accent-subtle: #eaefff;
-  --accent-text: #2c4bb8;
+  --accent-hover: #3252c4;
+  --accent-subtle: #e9effe;
+  --accent-text: #2b49b5;
+  --accent-glow: transparent;
 
   --danger: #c0392f;
-  --danger-subtle: #fdecea;
+  --danger-subtle: #fdeceb;
   --success: #2f7d54;
   --warning: #9a6a15;
 
+  --overlay: rgb(26 25 23 / 0.34);
   --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent);
-  --overlay: rgb(28 27 25 / 0.32);
 
-  /* Status colours. Also encoded by line style on the timeline and by text
-     elsewhere, so colour is never the sole carrier of meaning. */
-  --status-todo: #8b8781;
+  --status-todo: #8a8680;
   --status-in-progress: #3d63dd;
   --status-blocked: #c0392f;
   --status-done: #2f7d54;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 14px -3px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  --shadow-lg: 0 20px 44px -10px rgb(0 0 0 / 0.17), 0 4px 12px -4px rgb(0 0 0 / 0.08);
+  --blur: none;
+
+  /* Task palette, tuned for a warm light ground. */
+  --palette-1: #4c7ef3;
+  --palette-2: #e0603a;
+  --palette-3: #2fa36b;
+  --palette-4: #b45fd1;
+  --palette-5: #d9922b;
+  --palette-6: #2aa2b8;
 }
 
-/* --------------------------------------------------------------- dark --- */
-/* Not an inversion: dark surfaces sit close together with a slightly desaturated
-   text ramp, which keeps the task colours readable against them. */
-
+:root[data-theme='calm'][data-mode='dark'],
 :root[data-mode='dark'] {
-  --ground: #16161a;
-  --surface: #1d1e23;
-  --surface-raised: #24252b;
-  --surface-sunken: #131316;
-  --surface-hover: #292a31;
-  --surface-active: #31323a;
+  --ground: #17171b;
+  --surface: #1e1f24;
+  --surface-raised: #25262c;
+  --surface-sunken: #141417;
+  --surface-hover: #2a2b32;
+  --surface-active: #32333b;
+  --surface-translucent: rgb(30 31 36 / 0.86);
 
-  --text: #edecea;
-  --text-secondary: #a8a6a2;
-  --text-muted: #7d7b78;
-  --text-faint: #5a5956;
-  --text-on-accent: #ffffff;
+  --text: #eeedeb;
+  --text-secondary: #a9a7a3;
+  --text-muted: #7e7c79;
+  --text-faint: #5b5a57;
 
-  --border: #2e2f36;
-  --border-strong: #40414a;
+  --border: #2f3037;
+  --border-strong: #41424b;
 
   --accent: #7391f5;
-  --accent-hover: #8ba4f7;
-  --accent-subtle: #1e2540;
-  --accent-text: #a3b8f9;
+  --accent-hover: #8ca6f8;
+  --accent-subtle: #1e2542;
+  --accent-text: #a4b9fa;
 
   --danger: #ef6d63;
-  --danger-subtle: #35201e;
+  --danger-subtle: #34201e;
   --success: #5fbb84;
   --warning: #d0a04a;
 
-  --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent);
-  --overlay: rgb(0 0 0 / 0.55);
+  --overlay: rgb(0 0 0 / 0.58);
 
-  --status-todo: #7d7b78;
+  --status-todo: #7e7c79;
   --status-in-progress: #7391f5;
   --status-blocked: #ef6d63;
   --status-done: #5fbb84;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-  --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
-  --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+  --shadow-md: 0 4px 14px -3px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 20px 44px -10px rgb(0 0 0 / 0.62);
 }
+
+/* ================================================================== NEON === */
+/* Vibrant and luminous. Space Grotesk gives headings a geometric, slightly
+   technical character that a neutral grotesk cannot.
+ *
+ * The energy comes from saturated colour, gradients and glow — not from heavy
+ * backdrop blur (DD-22). `backdrop-filter` forces the compositor to
+ * re-rasterise every frame, which would cost most exactly where this app must
+ * stay smooth: timeline panning and drag-to-reorder. Blur appears only on
+ * surfaces that genuinely float and do not scroll. */
+
+:root[data-theme='neon'] {
+  --font-sans: 'Inter', ui-sans-serif, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-display: 'Space Grotesk', 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --font-weight-normal: 430;
+  --font-weight-medium: 560;
+  --font-weight-bold: 680;
+  --font-weight-display: 600;
+  --letter-spacing-tight: -0.012em;
+  --letter-spacing-display: -0.035em;
+  --letter-spacing-wide: 0.09em;
+  --text-transform-label: uppercase;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 20px;
+
+  --motion: 200ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --ground: #f4f4f8;
+  /* A wash of colour behind everything, so the page is never flatly grey. */
+  --ground-gradient: radial-gradient(
+      1200px 700px at 12% -8%,
+      rgb(99 91 255 / 0.1),
+      transparent 60%
+    ),
+    radial-gradient(1000px 600px at 96% 4%, rgb(236 72 153 / 0.08), transparent 58%);
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ecebf3;
+  --surface-hover: #f2f1f9;
+  --surface-active: #e7e5f3;
+  --surface-translucent: rgb(255 255 255 / 0.72);
+
+  --text: #16151f;
+  --text-secondary: #56536b;
+  --text-muted: #837fa0;
+  --text-faint: #aeaac6;
+  --text-on-accent: #ffffff;
+
+  --border: #e4e2ee;
+  --border-strong: #ccc8dd;
+
+  --accent: #635bff;
+  --accent-hover: #514aeb;
+  --accent-subtle: #ecebff;
+  --accent-text: #4f46d6;
+  --accent-glow: rgb(99 91 255 / 0.3);
+
+  --danger: #e5384f;
+  --danger-subtle: #ffedef;
+  --success: #00a870;
+  --warning: #d97706;
+
+  --overlay: rgb(20 18 40 / 0.4);
+  --focus-ring: 0 0 0 2px var(--ground), 0 0 0 4px var(--accent),
+    0 0 16px var(--accent-glow);
+
+  --status-todo: #837fa0;
+  --status-in-progress: #635bff;
+  --status-blocked: #e5384f;
+  --status-done: #00a870;
+
+  --shadow-sm: 0 1px 2px rgb(30 20 80 / 0.06);
+  --shadow-md: 0 6px 20px -4px rgb(30 20 80 / 0.13), 0 2px 6px -2px rgb(30 20 80 / 0.07);
+  --shadow-lg: 0 24px 56px -12px rgb(30 20 80 / 0.24), 0 8px 20px -8px rgb(30 20 80 / 0.12);
+  --blur: blur(14px);
+
+  /* Saturated, luminous, and still distinguishable at a 2px line width. */
+  --palette-1: #635bff;
+  --palette-2: #ff5c7a;
+  --palette-3: #00c9a7;
+  --palette-4: #c265ff;
+  --palette-5: #ff9838;
+  --palette-6: #22b8ff;
+}
+
+:root[data-theme='neon'][data-mode='dark'] {
+  --ground: #0b0a12;
+  /* Dark is where this theme earns its name: pools of colour under a near-black
+     ground, with surfaces that sit just above it. */
+  --ground-gradient: radial-gradient(
+      1100px 640px at 10% -10%,
+      rgb(99 91 255 / 0.2),
+      transparent 62%
+    ),
+    radial-gradient(900px 560px at 98% 2%, rgb(255 92 122 / 0.13), transparent 58%),
+    radial-gradient(800px 700px at 60% 110%, rgb(0 201 167 / 0.08), transparent 60%);
+  --surface: #14131f;
+  --surface-raised: #1b1a29;
+  --surface-sunken: #0e0d16;
+  --surface-hover: #201f31;
+  --surface-active: #29273e;
+  --surface-translucent: rgb(20 19 31 / 0.72);
+
+  --text: #f2f1fa;
+  --text-secondary: #a9a5c4;
+  --text-muted: #7b779c;
+  --text-faint: #565273;
+
+  --border: #262437;
+  --border-strong: #383550;
+
+  --accent: #8b84ff;
+  --accent-hover: #a49dff;
+  --accent-subtle: #201d3d;
+  --accent-text: #b3adff;
+  --accent-glow: rgb(139 132 255 / 0.45);
+
+  --danger: #ff6b83;
+  --danger-subtle: #2e1520;
+  --success: #2ee0ac;
+  --warning: #ffb454;
+
+  --overlay: rgb(4 3 10 / 0.68);
+
+  --status-todo: #7b779c;
+  --status-in-progress: #8b84ff;
+  --status-blocked: #ff6b83;
+  --status-done: #2ee0ac;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+  --shadow-md: 0 6px 22px -4px rgb(0 0 0 / 0.62);
+  --shadow-lg: 0 28px 64px -12px rgb(0 0 0 / 0.76);
+
+  --palette-1: #8b84ff;
+  --palette-2: #ff6b83;
+  --palette-3: #2ee0ac;
+  --palette-4: #d47bff;
+  --palette-5: #ffab4f;
+  --palette-6: #4cc9ff;
+}
+
+/* ------------------------------------------------------- system dark mode --- */
+/* `system` follows the OS. Each theme's dark values are repeated here rather
+   than shared, because a media query cannot be composed with an attribute
+   selector any other way. */
 
 @media (prefers-color-scheme: dark) {
   :root[data-mode='system'] {
-    --ground: #16161a;
-    --surface: #1d1e23;
-    --surface-raised: #24252b;
-    --surface-sunken: #131316;
-    --surface-hover: #292a31;
-    --surface-active: #31323a;
+    --ground: #17171b;
+    --surface: #1e1f24;
+    --surface-raised: #25262c;
+    --surface-sunken: #141417;
+    --surface-hover: #2a2b32;
+    --surface-active: #32333b;
+    --surface-translucent: rgb(30 31 36 / 0.86);
 
-    --text: #edecea;
-    --text-secondary: #a8a6a2;
-    --text-muted: #7d7b78;
-    --text-faint: #5a5956;
+    --text: #eeedeb;
+    --text-secondary: #a9a7a3;
+    --text-muted: #7e7c79;
+    --text-faint: #5b5a57;
 
-    --border: #2e2f36;
-    --border-strong: #40414a;
+    --border: #2f3037;
+    --border-strong: #41424b;
 
     --accent: #7391f5;
-    --accent-hover: #8ba4f7;
-    --accent-subtle: #1e2540;
-    --accent-text: #a3b8f9;
+    --accent-hover: #8ca6f8;
+    --accent-subtle: #1e2542;
+    --accent-text: #a4b9fa;
 
     --danger: #ef6d63;
-    --danger-subtle: #35201e;
+    --danger-subtle: #34201e;
     --success: #5fbb84;
     --warning: #d0a04a;
 
-    --overlay: rgb(0 0 0 / 0.55);
+    --overlay: rgb(0 0 0 / 0.58);
 
-    --status-todo: #7d7b78;
+    --status-todo: #7e7c79;
     --status-in-progress: #7391f5;
     --status-blocked: #ef6d63;
     --status-done: #5fbb84;
 
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
-    --shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5);
-    --shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.6);
+    --shadow-md: 0 4px 14px -3px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 20px 44px -10px rgb(0 0 0 / 0.62);
+  }
+
+  :root[data-theme='neon'][data-mode='system'] {
+    --ground: #0b0a12;
+    --ground-gradient: radial-gradient(
+        1100px 640px at 10% -10%,
+        rgb(99 91 255 / 0.2),
+        transparent 62%
+      ),
+      radial-gradient(900px 560px at 98% 2%, rgb(255 92 122 / 0.13), transparent 58%),
+      radial-gradient(800px 700px at 60% 110%, rgb(0 201 167 / 0.08), transparent 60%);
+    --surface: #14131f;
+    --surface-raised: #1b1a29;
+    --surface-sunken: #0e0d16;
+    --surface-hover: #201f31;
+    --surface-active: #29273e;
+    --surface-translucent: rgb(20 19 31 / 0.72);
+
+    --text: #f2f1fa;
+    --text-secondary: #a9a5c4;
+    --text-muted: #7b779c;
+    --text-faint: #565273;
+
+    --border: #262437;
+    --border-strong: #383550;
+
+    --accent: #8b84ff;
+    --accent-hover: #a49dff;
+    --accent-subtle: #201d3d;
+    --accent-text: #b3adff;
+    --accent-glow: rgb(139 132 255 / 0.45);
+
+    --danger: #ff6b83;
+    --danger-subtle: #2e1520;
+    --success: #2ee0ac;
+    --warning: #ffb454;
+
+    --overlay: rgb(4 3 10 / 0.68);
+
+    --status-todo: #7b779c;
+    --status-in-progress: #8b84ff;
+    --status-blocked: #ff6b83;
+    --status-done: #2ee0ac;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-md: 0 6px 22px -4px rgb(0 0 0 / 0.62);
+    --shadow-lg: 0 28px 64px -12px rgb(0 0 0 / 0.76);
+
+    --palette-1: #8b84ff;
+    --palette-2: #ff6b83;
+    --palette-3: #2ee0ac;
+    --palette-4: #d47bff;
+    --palette-5: #ffab4f;
+    --palette-6: #4cc9ff;
   }
 }
 
-/* Bold leans on a deeper, more saturated ground so the task colours carry. */
-:root[data-theme='bold'] {
-  --ground: #f4f2ef;
-  --accent: #4f3ddd;
-  --accent-hover: #4230c4;
-  --accent-subtle: #ece9ff;
-}
-
-:root[data-theme='bold'][data-mode='dark'] {
-  --ground: #121016;
-  --accent: #9b8bff;
-  --accent-hover: #ab9dff;
-  --accent-subtle: #241d40;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme='bold'][data-mode='system'] {
-    --ground: #121016;
-    --accent: #9b8bff;
-    --accent-hover: #ab9dff;
-    --accent-subtle: #241d40;
-  }
-}
-
-/* ------------------------------------------------------ accessibility --- */
+/* -------------------------------------------------------- accessibility --- */
 
 @media (prefers-reduced-motion: reduce) {
   :root {

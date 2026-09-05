@@ -9,10 +9,14 @@ export class ApiError extends Error {
     }
 }
 async function request(path, init) {
-    const response = await fetch(path, {
-        ...init,
-        headers: { 'content-type': 'application/json', ...init?.headers },
-    });
+    // Only declare a JSON content-type when there is actually a body: Fastify
+    // rejects `application/json` with an empty body, which would break every
+    // DELETE and bodyless POST.
+    const headers = { ...init?.headers };
+    if (init?.body !== undefined && headers['content-type'] === undefined) {
+        headers['content-type'] = 'application/json';
+    }
+    const response = await fetch(path, { ...init, headers });
     if (!response.ok) {
         let message = response.statusText;
         let issues;
@@ -46,6 +50,10 @@ export const api = {
     updatePage: (id, input) => request(`/api/pages/${id}`, { method: 'PATCH', body: JSON.stringify(input) }),
     repositionPage: (id, input) => request(`/api/pages/${id}/position`, { method: 'PATCH', body: JSON.stringify(input) }),
     deletePage: (id, policy) => request(`/api/pages/${id}${qs(policy)}`, { method: 'DELETE' }),
+    /* ----------------------------------------------------------- places --- */
+    listPlaces: () => request('/api/places'),
+    createPlace: (input) => request('/api/places', { method: 'POST', body: JSON.stringify(input) }),
+    deletePlace: (id) => request(`/api/places/${id}`, { method: 'DELETE' }),
     /* ------------------------------------------------------------ tasks --- */
     listTasks: (params) => request(`/api/tasks${qs(params)}`),
     getTask: (id) => request(`/api/tasks/${id}`),
@@ -83,6 +91,7 @@ export const api = {
 /** Query keys, centralised so invalidation is consistent. */
 export const keys = {
     pages: ['pages'],
+    places: ['places'],
     tasks: (params = {}) => ['tasks', params],
     task: (id) => ['task', id],
     timeline: (params = {}) => ['timeline', params],

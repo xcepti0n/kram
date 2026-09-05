@@ -21,7 +21,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import type { Page, SortMode, Task, TaskStatus } from '@tasktracker/shared';
+import type { Page, Place, SortMode, Task, TaskStatus } from '@tasktracker/shared';
 import { TaskRow } from './TaskRow.js';
 import { TaskComposer } from './TaskComposer.js';
 import styles from './TaskList.module.css';
@@ -29,6 +29,7 @@ import styles from './TaskList.module.css';
 interface Props {
   tasks: Task[];
   pages: Page[];
+  places?: Place[];
   sort: SortMode;
   showPageNames?: boolean;
   selectedId: string | null;
@@ -43,6 +44,7 @@ interface Props {
 export function TaskList({
   tasks,
   pages,
+  places = [],
   sort,
   showPageNames = false,
   selectedId,
@@ -67,6 +69,7 @@ export function TaskList({
   }, [tasks, localOrder]);
 
   const pageById = useMemo(() => new Map(pages.map((p) => [p.id, p])), [pages]);
+  const placeById = useMemo(() => new Map(places.map((p) => [p.id, p])), [places]);
   const draggable = sort === 'manual';
 
   const sensors = useSensors(
@@ -116,6 +119,7 @@ export function TaskList({
                     task={task}
                     pageColour={page?.colour}
                     pageName={showPageNames ? page?.name : undefined}
+                    placeName={task.place_id ? placeById.get(task.place_id)?.name : undefined}
                     draggable={draggable}
                     selected={task.id === selectedId}
                     onSelect={onSelect}

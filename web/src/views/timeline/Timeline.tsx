@@ -29,7 +29,9 @@ import styles from './Timeline.module.css';
 
 const NAME_WIDTH = 210;
 const AXIS_HEIGHT = 34;
-const PADDING_RIGHT = 24;
+// Enough room for the last axis label, which is drawn to the right of its tick
+// and would otherwise be cut off at the canvas edge.
+const PADDING_RIGHT = 64;
 
 interface HoverCard {
   x: number;

@@ -10,7 +10,7 @@ Read these before making changes. Keep them current as the code evolves.
 | Document | Contents |
 | --- | --- |
 | `.docs/BRD.md` | Requirements, numbered `FR-*` / `NFR-*` |
-| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-20` |
+| `.docs/DESIGN.md` | Architecture, component diagram, data model, decisions `DD-1`…`DD-24` |
 | `.docs/IMPLEMENTATION.md` | Milestone tracker — **update as work completes** |
 
 Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
@@ -22,7 +22,7 @@ Per-feature designs live in `.docs/<feature>/design.md` (DD-19):
 | `.docs/timeline/` | Scale, segmented lines, points, zoom and pan |
 | `.docs/theme/` | Token system, the three themes, persistence |
 | `.docs/sharing/` | Users, page membership, assignment |
-| `.docs/location/` | Location storage; notifications deferred |
+| `.docs/location/` | Places, the picker; arrival notifications deferred |
 | `.docs/data/` | SQLite rationale, JSON export and import, migrations |
 
 ## Status
@@ -75,8 +75,13 @@ npm start       # production server from dist/
   together in the service layer, never independently (DD-15).
 - **Ownership vs. assignment.** `page_members` says who can see a page; `tasks.assigned_to` says
   whose task it is; `tasks.created_by` records who wrote it down. Three different questions.
-- **Theming.** Components read CSS custom properties only. A hard-coded colour or pixel spacing
-  breaks a theme silently; a lint rule enforces this (DD-8).
+- **Theming.** Components read CSS custom properties only; a hard-coded colour or spacing breaks a
+  theme silently (DD-8). Two axes, kept separate: **theme** (calm/neon) owns palette, typeface and
+  depth; **density** owns every size (DD-21). Never put a measurement in a theme block. Derive
+  geometry as `base * factor` — a self-referential `calc(var(--x) * n)` silently unsets the token.
+- **Places.** Location is a `places` record referenced by `place_id`, not free text per task, so
+  "what can I do here" is answerable (DD-23). No geocoding: places are named by the user and located
+  from the device (DD-24).
 - **Mutations.** Optimistic, with cache rollback on failure. Destructive actions are soft deletes
   with an undo toast, never a confirmation dialog (DD-7).
 - **Ordering.** `position` is a LexoRank-style string. Reordering sends neighbour ids, not an

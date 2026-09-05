@@ -4,10 +4,11 @@
  *
  * Every field saves on blur — there are no save buttons (FR-10.3).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   formatDate,
   PALETTE,
+  type Place,
   TASK_STATUSES,
   type StatusEvent,
   type StatusUpdate,
@@ -15,12 +16,15 @@ import {
   type TaskWithChildren,
 } from '@tasktracker/shared';
 import { DateInput } from '../../components/DateInput.js';
+import { PlacePicker, type PlaceWithCount } from '../../components/PlacePicker.js';
 import { STATUS_LABEL, StatusChip } from '../../components/StatusChip.js';
 import styles from './TaskSheet.module.css';
 
 interface Props {
   task: TaskWithChildren;
   pageName?: string;
+  places: PlaceWithCount[];
+  onCreatePlace: (name: string, coords?: { lat: number; lng: number }) => Promise<Place>;
   onClose: () => void;
   onUpdate: (input: Record<string, unknown>) => void;
   onStatusChange: (status: TaskStatus, occurred_on?: string) => void;
@@ -37,6 +41,8 @@ type TimelineEntry =
 export function TaskSheet({
   task,
   pageName,
+  places,
+  onCreatePlace,
   onClose,
   onUpdate,
   onStatusChange,
@@ -185,8 +191,18 @@ export function TaskSheet({
             data-testid="sheet-description"
           />
 
-          {/* Location: stored and displayed; notifications are deferred (DD-12). */}
-          <LocationField task={task} onUpdate={onUpdate} />
+          {/* A place is chosen, not described — see components/PlacePicker (DD-23). */}
+          <div className={styles.field}>
+            <span className={styles.fieldLabel}>Place</span>
+            <div className={styles.placeField}>
+              <PlacePicker
+                places={places}
+                selectedId={task.place_id}
+                onSelect={(place_id) => onUpdate({ place_id })}
+                onCreate={onCreatePlace}
+              />
+            </div>
+          </div>
 
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Progress</h3>
@@ -319,85 +335,6 @@ export function TaskSheet({
 }
 
 /* -------------------------------------------------------------------------- */
-
-function LocationField({
-  task,
-  onUpdate,
-}: {
-  task: TaskWithChildren;
-  onUpdate: (input: Record<string, unknown>) => void;
-}) {
-  const [label, setLabel] = useState(task.location_label ?? '');
-  const [locating, setLocating] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => setLabel(task.location_label ?? ''), [task.id, task.location_label]);
-
-  const useCurrentPosition = () => {
-    if (!navigator.geolocation) return;
-    setLocating(true);
-    // Permission is requested here, on an explicit action, never on page load.
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        onUpdate({
-          location_lat: Number(position.coords.latitude.toFixed(6)),
-          location_lng: Number(position.coords.longitude.toFixed(6)),
-          location_label: label || 'Current location',
-        });
-        setLocating(false);
-        if (!label) setLabel('Current location');
-        inputRef.current?.focus();
-      },
-      () => setLocating(false),
-      { timeout: 10_000 },
-    );
-  };
-
-  const hasCoords = task.location_lat !== null && task.location_lng !== null;
-
-  return (
-    <div className={styles.location}>
-      <span className={styles.fieldLabel}>Location</span>
-      <div className={styles.locationRow}>
-        <input
-          ref={inputRef}
-          type="text"
-          className={styles.locationInput}
-          value={label}
-          placeholder="Where does this happen?"
-          onChange={(event) => setLabel(event.target.value)}
-          onBlur={() => {
-            if (label !== (task.location_label ?? '')) {
-              onUpdate({ location_label: label || null });
-            }
-          }}
-          aria-label="Location label"
-          data-testid="location-input"
-        />
-        <button
-          type="button"
-          className={styles.locationButton}
-          onClick={useCurrentPosition}
-          disabled={locating}
-          title="Use my current location"
-          data-testid="use-location"
-        >
-          {locating ? '…' : 'Locate'}
-        </button>
-      </div>
-      {hasCoords && (
-        <a
-          className={styles.locationLink}
-          href={`https://www.openstreetmap.org/?mlat=${task.location_lat}&mlon=${task.location_lng}#map=16/${task.location_lat}/${task.location_lng}`}
-          target="_blank"
-          rel="noreferrer"
-        >
-          {task.location_lat!.toFixed(4)}, {task.location_lng!.toFixed(4)}
-        </a>
-      )}
-    </div>
-  );
-}
 
 function todayString(): string {
   const now = new Date();

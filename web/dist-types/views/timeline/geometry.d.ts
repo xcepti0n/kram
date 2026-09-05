@@ -17,6 +17,17 @@ export interface DateRange {
 /** Pixels per day for a range across a given plot width. */
 export declare function scaleFor(range: DateRange, plotWidth: number): (date: string) => number;
 export declare function rangeFor(level: ZoomLevel, anchor: string): DateRange;
+/**
+ * A range that frames the data, with a little breathing room.
+ *
+ * Opening on a fixed window means a tracker whose work spans six weeks renders
+ * into a tenth of the canvas — technically correct and practically useless. The
+ * default view should show what there is to see.
+ */
+export declare function fitRange(spans: readonly {
+    from: string;
+    to: string;
+}[], todayDate: string, minimumDays?: number): DateRange;
 /** Shift a range by a number of days, keeping its width. */
 export declare function panRange(range: DateRange, days: number): DateRange;
 /**

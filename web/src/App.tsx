@@ -11,6 +11,7 @@ import {
   useAddUpdate,
   useChangeStatus,
   useCreatePage,
+  useCreatePlace,
   useCreateTask,
   useDeletePage,
   useDeleteTask,
@@ -19,6 +20,8 @@ import {
   useEditUpdate,
   useImport,
   usePages,
+  usePlaces,
+  useRepositionPage,
   useRepositionTask,
   useSettings,
   useTask,
@@ -54,6 +57,7 @@ export function App() {
   const [range, setRange] = useState<DateRange | null>(null);
 
   const pagesQuery = usePages();
+  const placesQuery = usePlaces();
   const settingsQuery = useSettings();
   const pages = useMemo(() => pagesQuery.data ?? [], [pagesQuery.data]);
   const settings = settingsQuery.data;
@@ -86,6 +90,8 @@ export function App() {
   const deleteUpdate = useDeleteUpdate();
   const editStatusEvent = useEditStatusEvent();
   const createPage = useCreatePage();
+  const repositionPage = useRepositionPage();
+  const createPlace = useCreatePlace();
   const updatePage = useUpdatePage();
   const deletePage = useDeletePage();
   const updateSettings = useUpdateSettings();
@@ -205,6 +211,9 @@ export function App() {
         }}
         onCreatePage={(name) => createPage.mutate(name)}
         onRenamePage={(id, name) => updatePage.mutate({ id, name })}
+        onReorderPage={(id, before_id, after_id) =>
+          repositionPage.mutate({ id, before_id, after_id })
+        }
         open={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
@@ -264,6 +273,7 @@ export function App() {
               <TaskList
                 tasks={tasks}
                 pages={pages}
+                places={placesQuery.data ?? []}
                 sort={sort}
                 selectedId={selectedTaskId}
                 onSelect={setSelectedTaskId}
@@ -300,6 +310,7 @@ export function App() {
                   <TaskList
                     tasks={pageTasks}
                     pages={pages}
+                    places={placesQuery.data ?? []}
                     sort={sort}
                     selectedId={selectedTaskId}
                     onSelect={setSelectedTaskId}
@@ -335,6 +346,10 @@ export function App() {
         <TaskSheet
           task={selectedTask.data}
           pageName={pages.find((p) => p.id === selectedTask.data!.page_id)?.name}
+          places={placesQuery.data ?? []}
+          onCreatePlace={(name, coords) =>
+            createPlace.mutateAsync({ name, lat: coords?.lat, lng: coords?.lng })
+          }
           onClose={() => setSelectedTaskId(null)}
           onUpdate={(input) => updateTask.mutate({ id: selectedTask.data!.id, input })}
           onStatusChange={(status, occurred_on) =>

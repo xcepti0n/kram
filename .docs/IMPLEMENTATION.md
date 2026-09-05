@@ -79,7 +79,8 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] dnd-kit drag-to-reorder with optimistic list update (FR-7.1)
 - [x] Touch drag verified on a real mobile browser (NFR-2.2)
 - [x] Keyboard reordering
-- [ ] Cross-page move by dragging onto a sidebar page
+- [x] Page reordering by dragging in the sidebar (FR-6.2)
+- [ ] Cross-page move by dragging a task onto a sidebar page
 - [x] Sort modes: manual, created, status, title (FR-7.5, DD-17)
 - [x] Drag disabled under non-manual sorts; manual order preserved
 
@@ -114,8 +115,8 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] Density comfortable / compact (FR-9.3)
 - [x] `GET/PATCH /api/settings`, mirrored to `localStorage` to avoid a theme flash (FR-9.4)
 - [x] Settings view with live theme preview
-- [x] **Bold** theme as a token set
-- [x] **Dense** theme as a token set
+- [x] **Neon** theme — palette, typeface, ambient gradient, glow (DD-21, DD-22)
+- [x] Theme and density separated: density owns all sizing (DD-21)
 - [ ] Lint rule rejecting hard-coded colours and pixel spacing in components
 - [x] Timeline geometry confirmed to read theme tokens
 - [x] `prefers-reduced-motion` honoured
@@ -137,10 +138,11 @@ decision references (`DD-*`) at `DESIGN.md`.
 → [`.docs/location/design.md`](./location/design.md)
 
 - [x] Location fields on the task API
-- [x] Location editor in the side sheet — label plus coordinates
-- [x] "Use my current location" via the geolocation API
-- [ ] Label autocomplete from previously used places
-- [x] Location chip on the row, and filtering (FR-8.2)
+- [x] `places` table and API; migration 002 converts existing task locations (DD-23)
+- [x] Place picker — type to filter, create on miss, "use where I am" (DD-24)
+- [x] Places ordered by task count; coordinates indicator
+- [x] Place chip on the row; `?place_id=` filtering (FR-8.2)
+- [x] `GET /api/places/near` — the query the future suggestion panel needs
 - [x] Notifications remain out of scope (DD-12)
 
 ## M8 — Testing (NFR-5)
@@ -171,6 +173,8 @@ decision references (`DD-*`) at `DESIGN.md`.
 
 - [-] Tag inference (orig. req. 11) — deterministic rules engine if revived (DD-11)
 - [-] Location arrival notifications (FR-8.3) — needs a background trigger (DD-12)
+- [-] "You are at X, these tasks match" panel — `/api/places/near` already answers it (DD-23)
+- [-] Address search / geocoding — deliberately not built (DD-24)
 - [-] Authentication and page-sharing UI — schema already supports it (DD-4, DD-13)
 - [-] Roles on `page_members` — one-line migration when wanted (DD-13)
 - [-] Conditional prioritisation by location, time or weekday (FR-7.6) — a sort mode (DD-17)
@@ -190,6 +194,6 @@ decision references (`DD-*`) at `DESIGN.md`.
 | M4 Timeline | **Done** |
 | M5 Theming | **Done** |
 | M6 Export & import | **Done** |
-| M7 Location | Storage done; notifications parked |
+| M7 Places | **Done**; arrival notifications parked |
 | M8 Testing | **Done** |
 | M9 Deployment | Not started |

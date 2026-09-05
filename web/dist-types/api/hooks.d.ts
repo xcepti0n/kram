@@ -24,6 +24,7 @@ export declare function useTasks(params: TaskListParams): import("@tanstack/reac
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -42,6 +43,7 @@ export declare function useTask(id: string | null): import("@tanstack/react-quer
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -98,11 +100,34 @@ export declare function useTimeline(params: {
             id: string;
             occurred_on: string;
         }[];
+        place_id?: string | null | undefined;
     }[];
 }, Error>;
+export declare function usePlaces(): import("@tanstack/react-query").UseQueryResult<({
+    id: string;
+    name: string;
+    created_at: string;
+    lat: number | null;
+    lng: number | null;
+    radius_m: number;
+} & {
+    task_count: number;
+})[], Error>;
+export declare function useCreatePlace(): import("@tanstack/react-query").UseMutationResult<{
+    id: string;
+    name: string;
+    created_at: string;
+    lat: number | null;
+    lng: number | null;
+    radius_m: number;
+}, Error, {
+    name: string;
+    lat?: number;
+    lng?: number;
+}, unknown>;
 export declare function useSettings(): import("@tanstack/react-query").UseQueryResult<{
     user_id: string;
-    theme: "calm" | "bold" | "dense";
+    theme: "calm" | "neon";
     mode: "light" | "dark" | "system";
     density: "comfortable" | "compact";
     hide_done: boolean;
@@ -120,6 +145,7 @@ export declare function useCreateTask(): import("@tanstack/react-query").UseMuta
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -147,6 +173,7 @@ export declare function useCreateTask(): import("@tanstack/react-query").UseMuta
     page_id?: string | undefined;
     description?: string | null | undefined;
     created_on?: string | undefined;
+    place_id?: string | null | undefined;
     location_label?: string | null | undefined;
     location_lat?: number | null | undefined;
     location_lng?: number | null | undefined;
@@ -164,6 +191,7 @@ export declare function useUpdateTask(): import("@tanstack/react-query").UseMuta
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -202,6 +230,7 @@ export declare function useUpdateTask(): import("@tanstack/react-query").UseMuta
         description: string | null;
         created_on: string;
         completed_on: string | null;
+        place_id: string | null;
         location_label: string | null;
         location_lat: number | null;
         location_lng: number | null;
@@ -237,6 +266,7 @@ export declare function useChangeStatus(): import("@tanstack/react-query").UseMu
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -277,6 +307,7 @@ export declare function useRepositionTask(): import("@tanstack/react-query").Use
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -300,6 +331,7 @@ export declare function useDeleteTask(): import("@tanstack/react-query").UseMuta
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -317,6 +349,7 @@ export declare function useDeleteTask(): import("@tanstack/react-query").UseMuta
     description: string | null;
     created_on: string;
     completed_on: string | null;
+    place_id: string | null;
     location_label: string | null;
     location_lat: number | null;
     location_lng: number | null;
@@ -425,19 +458,19 @@ export declare function useDeletePage(): import("@tanstack/react-query").UseMuta
 }, unknown>;
 export declare function useUpdateSettings(): import("@tanstack/react-query").UseMutationResult<{
     user_id: string;
-    theme: "calm" | "bold" | "dense";
+    theme: "calm" | "neon";
     mode: "light" | "dark" | "system";
     density: "comfortable" | "compact";
     hide_done: boolean;
 }, Error, {
-    theme?: "calm" | "bold" | "dense" | undefined;
+    theme?: "calm" | "neon" | undefined;
     mode?: "light" | "dark" | "system" | undefined;
     density?: "comfortable" | "compact" | undefined;
     hide_done?: boolean | undefined;
 }, {
     previous: {
         user_id: string;
-        theme: "calm" | "bold" | "dense";
+        theme: "calm" | "neon";
         mode: "light" | "dark" | "system";
         density: "comfortable" | "compact";
         hide_done: boolean;

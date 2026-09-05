@@ -1,8 +1,8 @@
 import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { rangeFor } from './views/timeline/geometry.js';
+import { buildSegments, fitRange, rangeFor } from './views/timeline/geometry.js';
 import { SORT_MODES, today, } from '@tasktracker/shared';
-import { useAddUpdate, useChangeStatus, useCreatePage, useCreateTask, useDeletePage, useDeleteTask, useDeleteUpdate, useEditStatusEvent, useEditUpdate, useImport, usePages, useRepositionTask, useSettings, useTask, useTasks, useTimeline, useUpdatePage, useUpdateSettings, useUpdateTask, } from './api/hooks.js';
+import { useAddUpdate, useChangeStatus, useCreatePage, useCreatePlace, useCreateTask, useDeletePage, useDeleteTask, useDeleteUpdate, useEditStatusEvent, useEditUpdate, useImport, usePages, usePlaces, useRepositionPage, useRepositionTask, useSettings, useTask, useTasks, useTimeline, useUpdatePage, useUpdateSettings, useUpdateTask, } from './api/hooks.js';
 import { Sidebar } from './views/Sidebar.js';
 import { TaskList } from './views/tasks/TaskList.js';
 import { TaskSheet } from './views/tasks/TaskSheet.js';
@@ -22,8 +22,11 @@ export function App() {
     const [sort, setSort] = useState('manual');
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [quickOpen, setQuickOpen] = useState(false);
-    const [range, setRange] = useState(() => rangeFor('week', today()));
+    // Null until the data arrives, so the first render can frame the real span
+    // rather than an arbitrary window the user then has to zoom out of.
+    const [range, setRange] = useState(null);
     const pagesQuery = usePages();
+    const placesQuery = usePlaces();
     const settingsQuery = useSettings();
     const pages = useMemo(() => pagesQuery.data ?? [], [pagesQuery.data]);
     const settings = settingsQuery.data;
@@ -34,9 +37,11 @@ export function App() {
         include_done: hideDone ? false : undefined,
         sort,
     });
+    // Ask for a generous window; the view frames a subset of it locally, so
+    // panning and zooming do not each cost a request.
     const timelineQuery = useTimeline({
-        from: range.from,
-        to: range.to,
+        from: range ? range.from : undefined,
+        to: range ? range.to : undefined,
         page_ids: view.kind === 'page' ? view.id : undefined,
         include_done: hideDone ? false : undefined,
     });
@@ -51,6 +56,8 @@ export function App() {
     const deleteUpdate = useDeleteUpdate();
     const editStatusEvent = useEditStatusEvent();
     const createPage = useCreatePage();
+    const repositionPage = useRepositionPage();
+    const createPlace = useCreatePlace();
     const updatePage = useUpdatePage();
     const deletePage = useDeletePage();
     const updateSettings = useUpdateSettings();
@@ -90,6 +97,22 @@ export function App() {
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
     }, []);
+    /* Frame the data the first time it arrives. Afterwards the user's own pan and
+       zoom is authoritative, so this does not fight them. */
+    const timelineData = timelineQuery.data;
+    useEffect(() => {
+        if (range !== null || !timelineData)
+            return;
+        const todayDate = today();
+        const spans = timelineData.tasks.map((task) => {
+            const segments = buildSegments(task, todayDate);
+            return {
+                from: segments[0]?.from ?? task.created_on,
+                to: segments[segments.length - 1]?.to ?? todayDate,
+            };
+        });
+        setRange(fitRange(spans, todayDate));
+    }, [timelineData, range]);
     const currentPage = view.kind === 'page' ? pages.find((p) => p.id === view.id) : undefined;
     const handleCreate = useCallback((title, targetPage) => {
         createTask.mutate({ title, page_id: targetPage ?? pageId ?? pages[0]?.id });
@@ -123,11 +146,11 @@ export function App() {
     return (_jsxs("div", { className: styles.shell, children: [_jsx(Sidebar, { pages: pages, view: view, onNavigate: (next) => {
                     setView(next);
                     setSidebarOpen(false);
-                }, onCreatePage: (name) => createPage.mutate(name), onRenamePage: (id, name) => updatePage.mutate({ id, name }), open: sidebarOpen, onClose: () => setSidebarOpen(false) }), _jsxs("main", { className: styles.main, children: [_jsxs("header", { className: styles.header, children: [_jsx("button", { type: "button", className: styles.menuButton, onClick: () => setSidebarOpen(true), "aria-label": "Open menu", children: _jsx("svg", { viewBox: "0 0 16 16", width: "17", height: "17", "aria-hidden": "true", children: _jsx("path", { d: "M2 4h12M2 8h12M2 12h12", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round" }) }) }), _jsx("h1", { className: styles.title, children: title }), (view.kind === 'page' || view.kind === 'overview') && (_jsxs("div", { className: styles.headerActions, children: [_jsx("select", { className: styles.sortSelect, value: sort, onChange: (event) => setSort(event.target.value), "aria-label": "Sort tasks", "data-testid": "sort-select", children: SORT_MODES.map((mode) => (_jsx("option", { value: mode, children: SORT_LABEL[mode] }, mode))) }), sort !== 'manual' && (_jsx("span", { className: styles.sortNote, title: "Drag to reorder is only available in your own order", children: "drag off" }))] }))] }), _jsxs("div", { className: styles.content, children: [view.kind === 'timeline' && timelineQuery.data && (_jsx(Timeline, { data: timelineQuery.data, groupByPage: true, range: range, onRangeChange: setRange, onSelectTask: setSelectedTaskId })), view.kind === 'page' && (_jsx("div", { className: styles.scroller, children: _jsx(TaskList, { tasks: tasks, pages: pages, sort: sort, selectedId: selectedTaskId, onSelect: setSelectedTaskId, onStatusChange: handleStatus, onDelete: handleDelete, onReorder: handleReorder, onCreate: (title) => handleCreate(title), composerPlaceholder: `Add a task to ${currentPage?.name ?? 'this page'}` }) })), view.kind === 'overview' && (_jsxs("div", { className: styles.scroller, children: [grouped.length === 0 && (_jsxs("p", { className: styles.empty, children: ["Nothing yet. Press ", _jsx("kbd", { children: "C" }), " to add your first task."] })), grouped.map(({ page, tasks: pageTasks }) => (_jsxs("section", { className: styles.group, children: [_jsxs("button", { type: "button", className: styles.groupHeader, onClick: () => setView({ kind: 'page', id: page.id }), "data-testid": `overview-group-${page.name}`, children: [_jsx("span", { className: styles.groupDot, style: { background: page.colour } }), page.name, _jsxs("span", { className: styles.groupCount, children: [pageTasks.filter((t) => t.status !== 'done').length, " open"] })] }), _jsx(TaskList, { tasks: pageTasks, pages: pages, sort: sort, selectedId: selectedTaskId, onSelect: setSelectedTaskId, onStatusChange: handleStatus, onDelete: handleDelete, onReorder: handleReorder, onCreate: (title) => handleCreate(title, page.id), composerPlaceholder: `Add to ${page.name}` })] }, page.id)))] })), view.kind === 'settings' && settings && (_jsx("div", { className: styles.scroller, children: _jsx(Settings, { settings: settings, pages: pages, onChange: (input) => updateSettings.mutate(input), onImport: (doc, mode) => importData.mutate({ doc, mode }), onDeletePage: (id, policy) => {
+                }, onCreatePage: (name) => createPage.mutate(name), onRenamePage: (id, name) => updatePage.mutate({ id, name }), onReorderPage: (id, before_id, after_id) => repositionPage.mutate({ id, before_id, after_id }), open: sidebarOpen, onClose: () => setSidebarOpen(false) }), _jsxs("main", { className: styles.main, children: [_jsxs("header", { className: styles.header, children: [_jsx("button", { type: "button", className: styles.menuButton, onClick: () => setSidebarOpen(true), "aria-label": "Open menu", children: _jsx("svg", { viewBox: "0 0 16 16", width: "17", height: "17", "aria-hidden": "true", children: _jsx("path", { d: "M2 4h12M2 8h12M2 12h12", stroke: "currentColor", strokeWidth: "1.5", strokeLinecap: "round" }) }) }), _jsx("h1", { className: styles.title, children: title }), (view.kind === 'page' || view.kind === 'overview') && (_jsxs("div", { className: styles.headerActions, children: [_jsx("select", { className: styles.sortSelect, value: sort, onChange: (event) => setSort(event.target.value), "aria-label": "Sort tasks", "data-testid": "sort-select", children: SORT_MODES.map((mode) => (_jsx("option", { value: mode, children: SORT_LABEL[mode] }, mode))) }), sort !== 'manual' && (_jsx("span", { className: styles.sortNote, title: "Drag to reorder is only available in your own order", children: "drag off" }))] }))] }), _jsxs("div", { className: styles.content, children: [view.kind === 'timeline' && timelineQuery.data && (_jsx(Timeline, { data: timelineQuery.data, groupByPage: true, range: range ?? rangeFor('week', today()), onRangeChange: setRange, onSelectTask: setSelectedTaskId })), view.kind === 'page' && (_jsx("div", { className: styles.scroller, children: _jsx(TaskList, { tasks: tasks, pages: pages, places: placesQuery.data ?? [], sort: sort, selectedId: selectedTaskId, onSelect: setSelectedTaskId, onStatusChange: handleStatus, onDelete: handleDelete, onReorder: handleReorder, onCreate: (title) => handleCreate(title), composerPlaceholder: `Add a task to ${currentPage?.name ?? 'this page'}` }) })), view.kind === 'overview' && (_jsxs("div", { className: styles.scroller, children: [grouped.length === 0 && (_jsxs("p", { className: styles.empty, children: ["Nothing yet. Press ", _jsx("kbd", { children: "C" }), " to add your first task."] })), grouped.map(({ page, tasks: pageTasks }) => (_jsxs("section", { className: styles.group, children: [_jsxs("button", { type: "button", className: styles.groupHeader, onClick: () => setView({ kind: 'page', id: page.id }), "data-testid": `overview-group-${page.name}`, children: [_jsx("span", { className: styles.groupDot, style: { background: page.colour } }), page.name, _jsxs("span", { className: styles.groupCount, children: [pageTasks.filter((t) => t.status !== 'done').length, " open"] })] }), _jsx(TaskList, { tasks: pageTasks, pages: pages, places: placesQuery.data ?? [], sort: sort, selectedId: selectedTaskId, onSelect: setSelectedTaskId, onStatusChange: handleStatus, onDelete: handleDelete, onReorder: handleReorder, onCreate: (title) => handleCreate(title, page.id), composerPlaceholder: `Add to ${page.name}` })] }, page.id)))] })), view.kind === 'settings' && settings && (_jsx("div", { className: styles.scroller, children: _jsx(Settings, { settings: settings, pages: pages, onChange: (input) => updateSettings.mutate(input), onImport: (doc, mode) => importData.mutate({ doc, mode }), onDeletePage: (id, policy) => {
                                         deletePage.mutate({ id, policy });
                                         if (view.kind === 'settings')
                                             setView({ kind: 'overview' });
-                                    } }) }))] })] }), selectedTask.data && (_jsx(TaskSheet, { task: selectedTask.data, pageName: pages.find((p) => p.id === selectedTask.data.page_id)?.name, onClose: () => setSelectedTaskId(null), onUpdate: (input) => updateTask.mutate({ id: selectedTask.data.id, input }), onStatusChange: (status, occurred_on) => changeStatus.mutate({ id: selectedTask.data.id, status, occurred_on }), onAddUpdate: (body, occurred_on, status) => addUpdate.mutate({
+                                    } }) }))] })] }), selectedTask.data && (_jsx(TaskSheet, { task: selectedTask.data, pageName: pages.find((p) => p.id === selectedTask.data.page_id)?.name, places: placesQuery.data ?? [], onCreatePlace: (name, coords) => createPlace.mutateAsync({ name, lat: coords?.lat, lng: coords?.lng }), onClose: () => setSelectedTaskId(null), onUpdate: (input) => updateTask.mutate({ id: selectedTask.data.id, input }), onStatusChange: (status, occurred_on) => changeStatus.mutate({ id: selectedTask.data.id, status, occurred_on }), onAddUpdate: (body, occurred_on, status) => addUpdate.mutate({
                     taskId: selectedTask.data.id,
                     input: { body, occurred_on, status },
                 }), onEditUpdate: (id, input) => editUpdate.mutate({ id, input }), onDeleteUpdate: (id) => deleteUpdate.mutate(id), onEditStatusEvent: (id, occurred_on) => editStatusEvent.mutate({ id, occurred_on }) })), quickOpen && (_jsx("div", { className: styles.quickScrim, onClick: () => setQuickOpen(false), children: _jsxs("div", { className: styles.quick, onClick: (event) => event.stopPropagation(), role: "dialog", "aria-label": "Quick add task", children: [_jsx(TaskComposer, { autoFocus: true, placeholder: "What needs doing?", onCreate: (title) => {

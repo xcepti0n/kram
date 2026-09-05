@@ -1,0 +1,196 @@
+.root {
+  position: relative;
+  min-width: 0;
+}
+
+.selectedRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-1) var(--space-3);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: background var(--motion) var(--motion-ease),
+    border-color var(--motion) var(--motion-ease), box-shadow var(--motion) var(--motion-ease);
+}
+
+.trigger:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.trigger[data-empty] {
+  color: var(--text-muted);
+  border-style: dashed;
+}
+
+.pin {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+/* A place with real coordinates can eventually trigger an arrival alert; one
+   without is only a label. Worth showing, quietly. */
+.hasCoords {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+  flex-shrink: 0;
+}
+
+.clear {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  transition: background var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.clear:hover {
+  background: var(--danger-subtle);
+  color: var(--danger);
+}
+
+.picker {
+  width: 100%;
+  background: var(--surface-raised);
+  border: var(--border-weight) solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md), 0 0 0 3px var(--accent-glow);
+  overflow: hidden;
+  animation: appear var(--motion) var(--motion-ease);
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--border-weight) solid var(--border);
+  color: var(--text-muted);
+}
+
+.search {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: none;
+  outline: none;
+  font-size: var(--font-size-sm);
+  color: var(--text);
+}
+
+.search::placeholder {
+  color: var(--text-faint);
+}
+
+.options {
+  max-height: 190px;
+  overflow-y: auto;
+  padding: var(--space-1);
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text);
+  text-align: left;
+  transition: background var(--motion) var(--motion-ease);
+}
+
+.option[data-highlighted] {
+  background: var(--surface-hover);
+}
+
+.option[data-selected] {
+  color: var(--accent-text);
+  font-weight: var(--font-weight-medium);
+}
+
+.optionName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.optionCount {
+  flex-shrink: 0;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--surface-sunken);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.plus {
+  display: grid;
+  place-items: center;
+  width: 11px;
+  flex-shrink: 0;
+  color: var(--accent);
+  font-weight: var(--font-weight-bold);
+}
+
+.empty {
+  padding: var(--space-3) var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--text-faint);
+}
+
+.locate {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border-top: var(--border-weight) solid var(--border);
+  background: var(--surface-sunken);
+  font-size: var(--font-size-sm);
+  color: var(--accent-text);
+  transition: background var(--motion) var(--motion-ease);
+}
+
+.locate:hover:not(:disabled) {
+  background: var(--accent-subtle);
+}
+
+.locate:disabled {
+  color: var(--text-muted);
+}
+
+@keyframes appear {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

@@ -4,7 +4,7 @@
   width: var(--sidebar-width);
   flex-shrink: 0;
   padding: var(--space-3) var(--space-2);
-  background: var(--surface-sunken);
+  background: var(--surface-translucent);
   border-right: var(--border-weight) solid var(--border);
   overflow-y: auto;
 }
@@ -150,5 +150,57 @@
     inset: 0;
     z-index: 50;
     background: var(--overlay);
+  }
+}
+
+/* Pages are reorderable, so each row pairs a navigation button with a drag
+   handle that appears on hover (always, on touch). */
+.pageItem {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pageItem[data-dragging] {
+  opacity: 0.5;
+  position: relative;
+  z-index: 5;
+}
+
+.pageItem .item {
+  flex: 1;
+  min-width: 0;
+}
+
+.pageHandle {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 24px;
+  flex-shrink: 0;
+  border-radius: var(--radius-sm);
+  color: var(--text-faint);
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity var(--motion) var(--motion-ease), color var(--motion) var(--motion-ease);
+}
+
+.pageItem:hover .pageHandle,
+.pageHandle:focus-visible {
+  opacity: 1;
+}
+
+.pageHandle:hover {
+  color: var(--text-muted);
+}
+
+.pageHandle:active {
+  cursor: grabbing;
+}
+
+@media (hover: none) {
+  .pageHandle {
+    opacity: 1;
   }
 }

@@ -1,5 +1,21 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { restrictToVerticalAxis, restrictToParentElement } from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import type { Page } from '@tasktracker/shared';
+import { SidebarPage } from './SidebarPage.js';
 import styles from './Sidebar.module.css';
 
 export type ViewKey = { kind: 'overview' } | { kind: 'timeline' } | { kind: 'page'; id: string } | { kind: 'settings' };
@@ -10,6 +26,7 @@ interface Props {
   onNavigate: (view: ViewKey) => void;
   onCreatePage: (name: string) => void;
   onRenamePage: (id: string, name: string) => void;
+  onReorderPage: (id: string, before_id: string | null, after_id: string | null) => void;
   open: boolean;
   onClose: () => void;
 }
@@ -20,6 +37,7 @@ export function Sidebar({
   onNavigate,
   onCreatePage,
   onRenamePage,
+  onReorderPage,
   open,
   onClose,
 }: Props) {
@@ -27,6 +45,38 @@ export function Sidebar({
   const [newName, setNewName] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [localOrder, setLocalOrder] = useState<string[] | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
+  /* The list settles locally on drop while the write is in flight; the query
+     invalidation reconciles it afterwards. */
+  const ordered = useMemo(() => {
+    if (!localOrder) return pages;
+    const byId = new Map(pages.map((p) => [p.id, p]));
+    const out = localOrder.map((id) => byId.get(id)).filter((p): p is Page => Boolean(p));
+    for (const page of pages) if (!localOrder.includes(page.id)) out.push(page);
+    return out;
+  }, [pages, localOrder]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const from = ordered.findIndex((p) => p.id === active.id);
+    const to = ordered.findIndex((p) => p.id === over.id);
+    if (from < 0 || to < 0) return;
+
+    const next = [...ordered];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved!);
+    setLocalOrder(next.map((p) => p.id));
+
+    onReorderPage(String(active.id), next[to - 1]?.id ?? null, next[to + 1]?.id ?? null);
+  };
 
   const isActive = (candidate: ViewKey): boolean => {
     if (candidate.kind !== view.kind) return false;
@@ -97,44 +147,51 @@ export function Sidebar({
           </button>
         </div>
 
-        <ul className={styles.group}>
-          {pages.map((page) => (
-            <li key={page.id}>
-              {renaming === page.id ? (
-                <input
-                  className={styles.renameInput}
-                  value={renameValue}
-                  autoFocus
-                  onChange={(event) => setRenameValue(event.target.value)}
-                  onBlur={() => {
-                    const trimmed = renameValue.trim();
-                    if (trimmed && trimmed !== page.name) onRenamePage(page.id, trimmed);
-                    setRenaming(null);
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
-                    else if (event.key === 'Escape') setRenaming(null);
-                  }}
-                />
-              ) : (
-                <button
-                  type="button"
-                  className={styles.item}
-                  data-active={isActive({ kind: 'page', id: page.id }) || undefined}
-                  onClick={() => onNavigate({ kind: 'page', id: page.id })}
-                  onDoubleClick={() => {
-                    setRenaming(page.id);
-                    setRenameValue(page.name);
-                  }}
-                  data-testid={`nav-page-${page.name}`}
-                >
-                  <span className={styles.dot} style={{ background: page.colour }} aria-hidden="true" />
-                  <span className={styles.itemLabel}>{page.name}</span>
-                </button>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+          modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+        >
+          <SortableContext items={ordered.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+            <ul className={styles.group} data-testid="page-list">
+              {ordered.map((page) =>
+                renaming === page.id ? (
+                  <li key={page.id}>
+                    <input
+                      className={styles.renameInput}
+                      value={renameValue}
+                      autoFocus
+                      onChange={(event) => setRenameValue(event.target.value)}
+                      onBlur={() => {
+                        const trimmed = renameValue.trim();
+                        if (trimmed && trimmed !== page.name) onRenamePage(page.id, trimmed);
+                        setRenaming(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') (event.target as HTMLInputElement).blur();
+                        else if (event.key === 'Escape') setRenaming(null);
+                      }}
+                    />
+                  </li>
+                ) : (
+                  <SidebarPage
+                    key={page.id}
+                    page={page}
+                    active={isActive({ kind: 'page', id: page.id })}
+                    onNavigate={() => onNavigate({ kind: 'page', id: page.id })}
+                    onStartRename={() => {
+                      setRenaming(page.id);
+                      setRenameValue(page.name);
+                    }}
+                  />
+                ),
               )}
-            </li>
-          ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
 
+        <ul className={styles.group}>
           {creating && (
             <li>
               <input

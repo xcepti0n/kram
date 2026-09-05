@@ -5,12 +5,13 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
  *
  * Every field saves on blur — there are no save buttons (FR-10.3).
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatDate, PALETTE, TASK_STATUSES, } from '@tasktracker/shared';
 import { DateInput } from '../../components/DateInput.js';
+import { PlacePicker } from '../../components/PlacePicker.js';
 import { STATUS_LABEL, StatusChip } from '../../components/StatusChip.js';
 import styles from './TaskSheet.module.css';
-export function TaskSheet({ task, pageName, onClose, onUpdate, onStatusChange, onAddUpdate, onEditUpdate, onDeleteUpdate, onEditStatusEvent, }) {
+export function TaskSheet({ task, pageName, places, onCreatePlace, onClose, onUpdate, onStatusChange, onAddUpdate, onEditUpdate, onDeleteUpdate, onEditStatusEvent, }) {
     const [title, setTitle] = useState(task.title);
     const [description, setDescription] = useState(task.description ?? '');
     const [updateBody, setUpdateBody] = useState('');
@@ -66,7 +67,7 @@ export function TaskSheet({ task, pageName, onClose, onUpdate, onStatusChange, o
                                     if (description !== (task.description ?? '')) {
                                         onUpdate({ description: description || null });
                                     }
-                                }, "aria-label": "Description", "data-testid": "sheet-description" }), _jsx(LocationField, { task: task, onUpdate: onUpdate }), _jsxs("section", { className: styles.section, children: [_jsx("h3", { className: styles.sectionTitle, children: "Progress" }), _jsxs("div", { className: styles.updateComposer, children: [_jsx("textarea", { className: styles.updateInput, value: updateBody, placeholder: "What happened?", rows: 2, onChange: (event) => setUpdateBody(event.target.value), onKeyDown: (event) => {
+                                }, "aria-label": "Description", "data-testid": "sheet-description" }), _jsxs("div", { className: styles.field, children: [_jsx("span", { className: styles.fieldLabel, children: "Place" }), _jsx("div", { className: styles.placeField, children: _jsx(PlacePicker, { places: places, selectedId: task.place_id, onSelect: (place_id) => onUpdate({ place_id }), onCreate: onCreatePlace }) })] }), _jsxs("section", { className: styles.section, children: [_jsx("h3", { className: styles.sectionTitle, children: "Progress" }), _jsxs("div", { className: styles.updateComposer, children: [_jsx("textarea", { className: styles.updateInput, value: updateBody, placeholder: "What happened?", rows: 2, onChange: (event) => setUpdateBody(event.target.value), onKeyDown: (event) => {
                                                     // Enter submits; Shift+Enter adds a line. The common case is
                                                     // one line, so it gets the single keystroke (FR-3.4).
                                                     if (event.key === 'Enter' && !event.shiftKey) {
@@ -93,35 +94,6 @@ export function TaskSheet({ task, pageName, onClose, onUpdate, onStatusChange, o
                                                                 }, children: entry.update.body })), _jsxs("div", { className: styles.entryMeta, children: [_jsx(DateInput, { value: entry.update.occurred_on, onChange: (value) => onEditUpdate(entry.update.id, { occurred_on: value }), inline: true }), _jsx("button", { type: "button", className: styles.entryDelete, onClick: () => onDeleteUpdate(entry.update.id), "aria-label": "Delete update", "data-testid": "delete-update", children: "Delete" })] })] })] }, entry.update.id)) : (_jsxs("li", { className: styles.eventEntry, "data-testid": "history-event", children: [_jsx("span", { className: styles.eventDot, "data-status": entry.event.status }), _jsx("span", { className: styles.eventLabel, children: STATUS_LABEL[entry.event.status] }), _jsx(DateInput, { value: entry.event.occurred_on, onChange: (value) => onEditStatusEvent(entry.event.id, value), inline: true, className: styles.eventDate })] }, entry.event.id)))] })] })] })] })] }));
 }
 /* -------------------------------------------------------------------------- */
-function LocationField({ task, onUpdate, }) {
-    const [label, setLabel] = useState(task.location_label ?? '');
-    const [locating, setLocating] = useState(false);
-    const inputRef = useRef(null);
-    useEffect(() => setLabel(task.location_label ?? ''), [task.id, task.location_label]);
-    const useCurrentPosition = () => {
-        if (!navigator.geolocation)
-            return;
-        setLocating(true);
-        // Permission is requested here, on an explicit action, never on page load.
-        navigator.geolocation.getCurrentPosition((position) => {
-            onUpdate({
-                location_lat: Number(position.coords.latitude.toFixed(6)),
-                location_lng: Number(position.coords.longitude.toFixed(6)),
-                location_label: label || 'Current location',
-            });
-            setLocating(false);
-            if (!label)
-                setLabel('Current location');
-            inputRef.current?.focus();
-        }, () => setLocating(false), { timeout: 10_000 });
-    };
-    const hasCoords = task.location_lat !== null && task.location_lng !== null;
-    return (_jsxs("div", { className: styles.location, children: [_jsx("span", { className: styles.fieldLabel, children: "Location" }), _jsxs("div", { className: styles.locationRow, children: [_jsx("input", { ref: inputRef, type: "text", className: styles.locationInput, value: label, placeholder: "Where does this happen?", onChange: (event) => setLabel(event.target.value), onBlur: () => {
-                            if (label !== (task.location_label ?? '')) {
-                                onUpdate({ location_label: label || null });
-                            }
-                        }, "aria-label": "Location label", "data-testid": "location-input" }), _jsx("button", { type: "button", className: styles.locationButton, onClick: useCurrentPosition, disabled: locating, title: "Use my current location", "data-testid": "use-location", children: locating ? '…' : 'Locate' })] }), hasCoords && (_jsxs("a", { className: styles.locationLink, href: `https://www.openstreetmap.org/?mlat=${task.location_lat}&mlon=${task.location_lng}#map=16/${task.location_lat}/${task.location_lng}`, target: "_blank", rel: "noreferrer", children: [task.location_lat.toFixed(4), ", ", task.location_lng.toFixed(4)] }))] }));
-}
 function todayString() {
     const now = new Date();
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;

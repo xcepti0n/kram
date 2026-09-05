@@ -26,6 +26,33 @@ test.describe('pages and overview (FR-6)', () => {
     await expect(page.getByTestId('task-row-Other page task')).toBeVisible();
   });
 
+  test('reorders pages by dragging (FR-6.2)', async ({ page, request, seeded }) => {
+    await request.post('/api/pages', { data: { name: 'Beta' } });
+    await request.post('/api/pages', { data: { name: 'Gamma' } });
+
+    await page.goto('/');
+    await ready(page);
+
+    const before = await (await page.request.get('/api/pages')).json();
+    expect(before.map((p: any) => p.name)).toEqual(['Test Page', 'Beta', 'Gamma']);
+
+    const handle = page.getByTestId('page-handle-Gamma');
+    const target = page.getByTestId('nav-page-Test Page');
+    await handle.hover();
+    await page.mouse.down();
+    const box = await target.boundingBox();
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2, { steps: 12 });
+    await page.mouse.move(box!.x + box!.width / 2, box!.y + 2, { steps: 6 });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => {
+        const pages = await (await page.request.get('/api/pages')).json();
+        return pages.map((p: any) => p.name);
+      })
+      .toEqual(['Gamma', 'Test Page', 'Beta']);
+  });
+
   test('requires a policy when deleting a page with tasks (FR-6.3)', async ({
     page,
     request,

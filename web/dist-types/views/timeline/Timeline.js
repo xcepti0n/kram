@@ -11,12 +11,14 @@ import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { fromIso, today } from '@tasktracker/shared';
-import { buildSegments, clusterPoints, levelForRange, panRange, rangeFor, scaleFor, ticksFor, zoomRange, ZOOM_LEVELS, } from './geometry.js';
+import { buildSegments, clusterPoints, fitRange, levelForRange, panRange, rangeFor, scaleFor, ticksFor, zoomRange, ZOOM_LEVELS, } from './geometry.js';
 import { STATUS_LABEL } from '../../components/StatusChip.js';
 import styles from './Timeline.module.css';
-const NAME_WIDTH = 168;
+const NAME_WIDTH = 210;
 const AXIS_HEIGHT = 34;
-const PADDING_RIGHT = 24;
+// Enough room for the last axis label, which is drawn to the right of its tick
+// and would otherwise be cut off at the canvas edge.
+const PADDING_RIGHT = 64;
 export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range }) {
     const containerRef = useRef(null);
     const [width, setWidth] = useState(900);
@@ -60,6 +62,14 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
         observer.observe(element);
         return () => observer.disconnect();
     }, []);
+    /** Every task's drawn extent, for framing the view. */
+    const spans = useMemo(() => data.tasks.map((task) => {
+        const segments = buildSegments(task, todayDate);
+        return {
+            from: segments[0]?.from ?? task.created_on,
+            to: segments[segments.length - 1]?.to ?? todayDate,
+        };
+    }), [data.tasks, todayDate]);
     const plotWidth = Math.max(240, width - NAME_WIDTH - PADDING_RIGHT);
     const x = useMemo(() => scaleFor(range, plotWidth), [range, plotWidth]);
     const ticks = useMemo(() => ticksFor(range, level), [range, level]);
@@ -138,7 +148,7 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
         dragState.current = null;
     };
     const todayX = x(todayDate);
-    return (_jsxs("div", { className: styles.root, children: [_jsxs("div", { className: styles.controls, children: [_jsx("div", { className: styles.zoomGroup, role: "group", "aria-label": "Zoom level", children: ZOOM_LEVELS.map((option) => (_jsx("button", { type: "button", className: styles.zoomButton, "data-active": option === level || undefined, onClick: () => setLevel(option), "data-testid": `zoom-${option}`, children: option[0].toUpperCase() + option.slice(1) }, option))) }), _jsx("button", { type: "button", className: styles.todayButton, onClick: () => onRangeChange(rangeFor(level, todayDate)), "data-testid": "timeline-today", children: "Today" })] }), _jsxs("div", { className: styles.canvas, ref: containerRef, children: [data.tasks.length === 0 ? (_jsx("p", { className: styles.empty, children: "No tasks in this period." })) : (_jsxs("svg", { width: width, height: height, className: styles.svg, onPointerDown: onPointerDown, onPointerMove: onPointerMove, onPointerUp: endDrag, onPointerCancel: endDrag, "data-testid": "timeline-svg", role: "img", "aria-label": `Timeline of ${data.tasks.length} tasks from ${range.from} to ${range.to}`, children: [_jsx("defs", { children: _jsx("clipPath", { id: "plot-clip", children: _jsx("rect", { x: NAME_WIDTH, y: 0, width: plotWidth + PADDING_RIGHT, height: height }) }) }), _jsx("g", { className: styles.axis, clipPath: "url(#plot-clip)", children: ticks.map((tick) => {
+    return (_jsxs("div", { className: styles.root, children: [_jsxs("div", { className: styles.controls, children: [_jsx("div", { className: styles.zoomGroup, role: "group", "aria-label": "Zoom level", children: ZOOM_LEVELS.map((option) => (_jsx("button", { type: "button", className: styles.zoomButton, "data-active": option === level || undefined, onClick: () => setLevel(option), "data-testid": `zoom-${option}`, children: option[0].toUpperCase() + option.slice(1) }, option))) }), _jsxs("div", { className: styles.rightControls, children: [_jsx("button", { type: "button", className: styles.todayButton, onClick: () => onRangeChange(fitRange(spans, todayDate)), "data-testid": "timeline-fit", title: "Frame everything", children: "Fit" }), _jsx("button", { type: "button", className: styles.todayButton, onClick: () => onRangeChange(rangeFor(level, todayDate)), "data-testid": "timeline-today", children: "Today" })] })] }), _jsxs("div", { className: styles.canvas, ref: containerRef, children: [data.tasks.length === 0 ? (_jsx("p", { className: styles.empty, children: "No tasks in this period." })) : (_jsxs("svg", { width: width, height: height, className: styles.svg, onPointerDown: onPointerDown, onPointerMove: onPointerMove, onPointerUp: endDrag, onPointerCancel: endDrag, "data-testid": "timeline-svg", role: "img", "aria-label": `Timeline of ${data.tasks.length} tasks from ${range.from} to ${range.to}`, children: [_jsx("defs", { children: _jsx("clipPath", { id: "plot-clip", children: _jsx("rect", { x: NAME_WIDTH, y: 0, width: plotWidth + PADDING_RIGHT, height: height }) }) }), _jsx("g", { className: styles.axis, clipPath: "url(#plot-clip)", children: ticks.map((tick) => {
                                     const tx = NAME_WIDTH + x(tick.date);
                                     return (_jsxs("g", { children: [_jsx("line", { x1: tx, y1: AXIS_HEIGHT, x2: tx, y2: height, className: tick.major ? styles.gridMajor : styles.grid }), _jsx("text", { x: tx + 4, y: 20, className: tick.major ? styles.tickMajor : styles.tick, children: tick.label })] }, tick.date));
                                 }) }), todayX >= 0 && todayX <= plotWidth && (_jsx("g", { clipPath: "url(#plot-clip)", children: _jsx("line", { x1: NAME_WIDTH + todayX, y1: AXIS_HEIGHT - 6, x2: NAME_WIDTH + todayX, y2: height, className: styles.todayLine, "data-testid": "today-marker" }) })), rows.map((row, index) => {
@@ -164,16 +174,22 @@ export function Timeline({ data, groupByPage, onSelectTask, onRangeChange, range
                                                             return next;
                                                         });
                                                     }
-                                                }, "aria-expanded": !isCollapsed, "data-testid": `timeline-group-${row.name}`, children: [_jsx("path", { d: isCollapsed ? 'M6 -3.5l4 3.5-4 3.5z' : 'M5 -2l3.5 4 3.5-4z', transform: `translate(4 ${y})`, className: styles.chevron }), _jsx("circle", { cx: 22, cy: y, r: 4, fill: row.colour }), _jsx("text", { x: 32, y: y + 4, className: styles.groupName, children: row.name }), _jsx("text", { x: 32 + measure(row.name), y: y + 4, className: styles.groupCount, children: row.count })] })] }, `group-${row.pageId}`));
+                                                }, "aria-expanded": !isCollapsed, "data-testid": `timeline-group-${row.name}`, children: [_jsx("path", { d: isCollapsed ? 'M6 -3.5l4 3.5-4 3.5z' : 'M5 -2l3.5 4 3.5-4z', transform: `translate(4 ${y})`, className: styles.chevron }), _jsx("circle", { cx: 22, cy: y, r: 4, fill: row.colour }), _jsx("text", { x: 34, y: y + 4, className: styles.groupName, children: row.name }), _jsx("text", { x: NAME_WIDTH - 10, y: y + 4, textAnchor: "end", className: styles.groupCount, children: row.count })] })] }, `group-${row.pageId}`));
                                 }
                                 const { task } = row;
                                 const segments = buildSegments(task, todayDate);
                                 const points = clusterPoints(task.updates.map((update) => ({ x: x(update.occurred_on), item: update })), pointRadius * 2.2);
-                                const lineEnd = x(task.completed_on ?? todayDate);
+                                // The cap sits at the end of the drawn line, which is the last
+                                // segment's end — not necessarily completed_on, since an update
+                                // may extend a task's span past it.
+                                const lastSegment = segments[segments.length - 1];
+                                const lineEndDate = lastSegment ? lastSegment.to : (task.completed_on ?? todayDate);
+                                const lineEnd = x(lineEndDate);
+                                const isDone = task.status === 'done';
                                 return (_jsxs("g", { className: styles.taskRow, children: [_jsx("rect", { x: 0, y: y - rowHeight / 2, width: width, height: rowHeight, className: styles.rowHit }), _jsx("rect", { x: 0, y: y - rowHeight / 2, width: NAME_WIDTH, height: rowHeight, className: styles.nameBand }), _jsx("text", { x: groupByPage ? 20 : 8, y: y + 4, className: styles.taskName, onClick: () => onSelectTask(task.id), role: "button", tabIndex: 0, onKeyDown: (event) => {
                                                 if (event.key === 'Enter')
                                                     onSelectTask(task.id);
-                                            }, "data-testid": `timeline-task-${task.title}`, children: truncate(task.title, groupByPage ? 20 : 22) }), _jsxs("g", { clipPath: "url(#plot-clip)", children: [segments.map((segment, i) => (_jsx("line", { x1: NAME_WIDTH + x(segment.from), y1: y, x2: NAME_WIDTH + x(segment.to), y2: y, stroke: task.colour, strokeWidth: lineWeight, strokeLinecap: "round", className: styles.segment, "data-status": segment.status, "data-testid": `segment-${task.title}-${segment.status}` }, i))), task.completed_on ? (_jsx("path", { d: diamond(NAME_WIDTH + lineEnd, y, pointRadius + 1.5), fill: task.colour, className: styles.capDone, "data-testid": `cap-done-${task.title}` })) : (_jsx("path", { d: arrow(NAME_WIDTH + lineEnd, y, pointRadius + 1), fill: task.colour, className: styles.capOpen, "data-testid": `cap-open-${task.title}` })), points.map((cluster, i) => (_jsxs("g", { children: [_jsx("circle", { cx: NAME_WIDTH + cluster.x, cy: y, r: pointRadius, fill: task.colour, className: styles.point, tabIndex: 0, role: "button", "aria-label": `${cluster.items.length} update${cluster.items.length === 1 ? '' : 's'} on ${cluster.items[0].occurred_on}: ${cluster.items[0].body}`, "data-testid": `point-${task.title}`, onMouseEnter: (event) => setHover({
+                                            }, "data-testid": `timeline-task-${task.title}`, children: truncate(task.title, groupByPage ? 26 : 28) }), _jsxs("g", { clipPath: "url(#plot-clip)", children: [segments.map((segment, i) => (_jsx("line", { x1: NAME_WIDTH + x(segment.from), y1: y, x2: NAME_WIDTH + x(segment.to), y2: y, stroke: task.colour, strokeWidth: lineWeight, strokeLinecap: "round", className: styles.segment, "data-status": segment.status, "data-testid": `segment-${task.title}-${segment.status}` }, i))), isDone ? (_jsx("path", { d: diamond(NAME_WIDTH + lineEnd, y, pointRadius + 1.5), fill: task.colour, className: styles.capDone, "data-testid": `cap-done-${task.title}` })) : (_jsx("path", { d: arrow(NAME_WIDTH + lineEnd, y, pointRadius + 1), fill: task.colour, className: styles.capOpen, "data-testid": `cap-open-${task.title}` })), points.map((cluster, i) => (_jsxs("g", { children: [_jsx("circle", { cx: NAME_WIDTH + cluster.x, cy: y, r: pointRadius, fill: task.colour, className: styles.point, tabIndex: 0, role: "button", "aria-label": `${cluster.items.length} update${cluster.items.length === 1 ? '' : 's'} on ${cluster.items[0].occurred_on}: ${cluster.items[0].body}`, "data-testid": `point-${task.title}`, onMouseEnter: (event) => setHover({
                                                                 x: NAME_WIDTH + cluster.x,
                                                                 y: y - pointRadius - 6,
                                                                 title: task.title,
@@ -201,10 +217,6 @@ function arrow(x, y, r) {
 }
 function truncate(text, max) {
     return text.length > max ? `${text.slice(0, max - 1)}…` : text;
-}
-/** Rough text width for placing the count badge; exactness is not needed. */
-function measure(text) {
-    return text.length * 6.6 + 10;
 }
 function formatShort(date) {
     const d = fromIso(date);

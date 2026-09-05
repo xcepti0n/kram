@@ -92,7 +92,7 @@ Each requirement traces back to the originating request number in parentheses.
 ### FR-6 — Pages (req. 6)
 - FR-6.1 Tasks belong to exactly one page. The page is the unit of visibility and, later, of
   sharing between users.
-- FR-6.2 Pages are user-created, renameable, reorderable and deletable.
+- FR-6.2 Pages are user-created, renameable, reorderable by dragging, and deletable.
 - FR-6.3 Deleting a page requires choosing whether to move or delete its tasks; tasks are never
   silently destroyed.
 - FR-6.4 An **Overview** page aggregates tasks from all pages.
@@ -112,18 +112,20 @@ Each requirement traces back to the originating request number in parentheses.
   task's location, time of day, or weekday — as an additional sort mode rather than a redesign.
 
 ### FR-8 — Location (req. 8, P1)
-- FR-8.1 A task may optionally carry a location: a label, plus latitude and longitude.
-- FR-8.2 Location is displayed on the task and is filterable.
+- FR-8.1 A task may optionally reference a **place** — a named, reusable location with optional
+  coordinates and a radius. Places are chosen from what already exists, or created on the spot.
+- FR-8.2 A task's place is displayed on it, and the task list can be filtered to one place.
 - FR-8.3 Notification on arrival is out of scope for now; the schema anticipates it (see
   `.docs/location/design.md`).
 
 ### FR-9 — Theming (req. 9, P1)
 - FR-9.1 Light, dark and system-following colour modes.
-- FR-9.2 Selectable **view themes** that change layout character, not merely colour:
-  - **Calm** (default) — restrained palette, generous whitespace, strong typography.
-  - **Bold** — saturated colours, heavier type, pronounced motion; timeline as centerpiece.
-  - **Dense** — compact rows, smaller type, maximum information per screen.
-- FR-9.3 A density control (comfortable / compact) applying across all views.
+- FR-9.2 Selectable **themes** that change the app's visual character — palette, typeface and depth,
+  not its measurements:
+  - **Calm** (default) — restrained and editorial; gets out of the way.
+  - **Neon** — vibrant, luminous accents and an ambient colour wash.
+- FR-9.3 A density control (comfortable / compact) that owns every sizing decision, independently of
+  the chosen theme.
 - FR-9.4 Theme choice persists per device.
 
 ### FR-10 — Low friction (req. 10)

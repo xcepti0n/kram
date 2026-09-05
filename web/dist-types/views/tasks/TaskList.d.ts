@@ -1,7 +1,8 @@
-import type { Page, SortMode, Task, TaskStatus } from '@tasktracker/shared';
+import type { Page, Place, SortMode, Task, TaskStatus } from '@tasktracker/shared';
 interface Props {
     tasks: Task[];
     pages: Page[];
+    places?: Place[];
     sort: SortMode;
     showPageNames?: boolean;
     selectedId: string | null;
@@ -12,6 +13,6 @@ interface Props {
     onCreate: (title: string) => void;
     composerPlaceholder?: string;
 }
-export declare function TaskList({ tasks, pages, sort, showPageNames, selectedId, onSelect, onStatusChange, onDelete, onReorder, onCreate, composerPlaceholder, }: Props): import("react").JSX.Element;
+export declare function TaskList({ tasks, pages, places, sort, showPageNames, selectedId, onSelect, onStatusChange, onDelete, onReorder, onCreate, composerPlaceholder, }: Props): import("react").JSX.Element;
 export {};
 //# sourceMappingURL=TaskList.d.ts.map

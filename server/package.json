@@ -5,7 +5,9 @@
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {
-    "dev": "node --watch --experimental-strip-types src/index.ts",
+    "dev": "concurrently -k -n tsc,node -c gray,cyan \"npm:dev:types\" \"npm:dev:run\"",
+    "dev:types": "tsc --build --watch --preserveWatchOutput",
+    "dev:run": "node --watch dist/index.js",
     "build": "tsc --build"
   },
   "dependencies": {

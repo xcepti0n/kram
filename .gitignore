@@ -1,5 +1,6 @@
 node_modules/
 dist/
+dist-types/
 # Unanchored, so these match at any depth: the dev server resolves its data
 # directory relative to the workspace it runs from, not the repo root.
 **/data/*.db

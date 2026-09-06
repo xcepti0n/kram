@@ -185,7 +185,8 @@ decision references (`DD-*`) at `DESIGN.md`.
       builds, configures the service, health-checks. Self-contained (no third-party framework
       sourced at run time). Confirms settings before creating anything (D/C/Q), cleans up a failed
       container, and reads input from `/dev/tty` so it works under `curl | bash`. Shellcheck clean;
-      every prompt path exercised against a pty with stubbed `pct`/`pvesm`.
+      every prompt path exercised against a pty with stubbed `pct`/`pvesm`. Console auto-login by
+      default, with `ROOT_PASSWORD` and `SSH_KEY` for the alternatives.
 - [ ] Deploy verified end-to-end on the Proxmox LXC — **needs the actual host**
 
 ## Parked

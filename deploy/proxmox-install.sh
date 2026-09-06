@@ -296,6 +296,48 @@ install_app() {
   inct "chown -R kram:kram /opt/kram"
 }
 
+# Console and SSH access to the container itself.
+#
+# Two different accounts, easily confused:
+#   root  — how *you* get into the container. Configured here.
+#   kram  — the unprivileged account the service runs as. It has nologin on
+#           purpose, the same way www-data and postgres do; nobody logs in as it.
+#
+# By default the Proxmox console is set to auto-login as root, matching what the
+# community scripts do: the LXC boundary is the security control, and a console
+# you cannot get into is a container you cannot debug. Set ROOT_PASSWORD to use
+# a password instead, and SSH_KEY to add key-based ssh.
+configure_access() {
+  msg_info "Configuring container access…"
+
+  if [[ -n "${ROOT_PASSWORD:-}" ]]; then
+    inct "echo 'root:${ROOT_PASSWORD}' | chpasswd"
+    msg_ok "Root password set"
+  else
+    # Auto-login on the console only. This is reachable from the Proxmox UI and
+    # from `pct enter`, both of which already require host access.
+    inct "mkdir -p /etc/systemd/system/container-getty@1.service.d
+          cat >/etc/systemd/system/container-getty@1.service.d/autologin.conf <<'EOF'
+[Service]
+ExecStart=
+ExecStart=-/sbin/agetty --autologin root --noclear --keep-baud tty%I 115200,38400,9600 \$TERM
+EOF
+          systemctl daemon-reload
+          systemctl restart container-getty@1.service 2>/dev/null || true"
+    msg_ok "Console auto-login enabled (no password set)"
+  fi
+
+  if [[ -n "${SSH_KEY:-}" ]]; then
+    inct "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq openssh-server >/dev/null
+          mkdir -p /root/.ssh && chmod 700 /root/.ssh
+          echo '${SSH_KEY}' >> /root/.ssh/authorized_keys
+          chmod 600 /root/.ssh/authorized_keys
+          sed -i 's/^#*PermitRootLogin.*/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config
+          systemctl enable --now ssh >/dev/null 2>&1 || systemctl enable --now sshd >/dev/null 2>&1 || true"
+    msg_ok "SSH key installed (key-based root login only)"
+  fi
+}
+
 configure_service() {
   msg_info "Configuring service…"
 
@@ -518,6 +560,7 @@ main() {
   create_container
   install_base
   install_app
+  configure_access
   configure_service
   verify
   CREATED_CTID=""   # success — nothing to clean up

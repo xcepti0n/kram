@@ -41,6 +41,8 @@ NET=192.168.1.50/24 GATEWAY=192.168.1.1 ./deploy/proxmox-install.sh   # static I
 | `APP_PORT` | `4310` | Must be >1024 — the unit drops all capabilities |
 | `NODE_MAJOR` | `26` | Must be ≥24 — the script refuses to continue otherwise |
 | `REPO_URL` | `github.com/xcepti0n/kram` | Set to empty to copy the local checkout instead |
+| `ROOT_PASSWORD` | *(none)* | Sets a container root password; without it the console auto-logs in |
+| `SSH_KEY` | *(none)* | Installs openssh-server and this key for root; key-only, no password auth |
 | `ASSUME_YES` | `0` | `1` skips the confirmation prompt |
 | `KEEP_ON_FAIL` | `0` | `1` keeps a failed container for inspection instead of destroying it |
 
@@ -66,7 +68,32 @@ creating anything. Set `ASSUME_YES=1` to skip the prompt; a run with no terminal
 automatically rather than hanging.
 
 Then it creates the container, installs Node, builds, writes `/etc/kram.env` and the unit, starts
-the service, and health-checks it before telling you the URL. If a step fails it prints the failing
+the service, and health-checks it before telling you the URL.
+
+### Getting into the container
+
+Two accounts, easily confused:
+
+- **`root`** — how *you* get in. By default the Proxmox console auto-logs in as root and no password
+  is set, which is what the community scripts do: reaching the console already requires access to
+  the host. `pct enter <id>` from the host works regardless.
+- **`kram`** — the unprivileged account the *service* runs as. It has `nologin` on purpose, the same
+  way `www-data` and `postgres` do. Nobody logs in as it, and nothing is wrong if you cannot.
+
+For a password instead of auto-login, or for SSH:
+
+```bash
+ROOT_PASSWORD='...' bash -c "$(curl -fsSL .../proxmox-install.sh)"
+SSH_KEY="$(cat ~/.ssh/id_ed25519.pub)" bash -c "$(curl -fsSL .../proxmox-install.sh)"
+```
+
+`SSH_KEY` installs openssh-server and sets `PermitRootLogin prohibit-password`, so the key works and
+password login over SSH does not. To add either afterwards, from the host:
+
+```bash
+pct set <id> --password              # prompts for a root password
+pct exec <id> -- passwd root         # same thing from inside
+``` If a step fails it prints the failing
 line and the service logs rather than leaving you a half-built container.
 
 The rest of this document is the manual version — worth reading if you want to know what the

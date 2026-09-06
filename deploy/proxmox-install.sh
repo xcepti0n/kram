@@ -17,7 +17,10 @@
 # exchange for making every future install depend on a third party still being
 # reachable and still behaving the same way. This is one file you can read.
 
-set -euo pipefail
+# -E matters: without it an ERR trap is not inherited by shell functions, so a
+# failure inside install_app() would exit silently and leave the half-built
+# container behind — which is exactly the case the trap exists for.
+set -Eeuo pipefail
 
 # ------------------------------------------------------------------ config ---
 
@@ -67,7 +70,29 @@ EOF
 }
 
 # Anything that fails should say where, not just stop.
-trap 'msg_error "failed at line $LINENO: ${BASH_COMMAND}"' ERR
+# Set once the container exists, so a later failure can clean up after itself.
+CREATED_CTID=""
+
+# A failed run must not leave a half-built container behind: the next attempt
+# would allocate a fresh ID and leak this one. Destroy it unless KEEP_ON_FAIL=1,
+# which is what you want when debugging the failure itself.
+on_failure() {
+  local code=$?
+  msg_error "failed at line ${BASH_LINENO[0]}: ${BASH_COMMAND}"
+  if [[ -n "$CREATED_CTID" ]]; then
+    if [[ "${KEEP_ON_FAIL:-0}" == "1" ]]; then
+      msg_warn "Container $CREATED_CTID left in place (KEEP_ON_FAIL=1)."
+      msg_warn "Inspect: pct enter $CREATED_CTID    Remove: pct destroy $CREATED_CTID --force"
+    else
+      msg_warn "Removing the incomplete container ${CREATED_CTID}…"
+      pct stop "$CREATED_CTID" >/dev/null 2>&1 || true
+      pct destroy "$CREATED_CTID" --force >/dev/null 2>&1 || true
+      msg_ok "Cleaned up. Re-run to try again, or set KEEP_ON_FAIL=1 to inspect."
+    fi
+  fi
+  exit $code
+}
+trap on_failure ERR
 
 # ----------------------------------------------------------- preconditions ---
 
@@ -165,6 +190,7 @@ create_container() {
     --tags "kram;tasks" \
     --description "Kram — personal task tracker" >/dev/null
 
+  CREATED_CTID="$CTID"
   pct start "$CTID" >/dev/null
   msg_ok "Container $CTID created and started"
 
@@ -182,7 +208,14 @@ create_container() {
 }
 
 # Run a command inside the container.
-inct() { pct exec "$CTID" -- bash -c "$1"; }
+#
+# LC_ALL=C is set because pct exec passes the host's environment through, and a
+# fresh Debian container has not generated en_US.UTF-8 — so every apt call
+# emitted a wall of perl locale warnings. C is always present.
+# `set -e` inside matters: these are multi-statement scripts, and bash -c
+# otherwise returns only the last command's status — a failed clone followed by
+# a successful `rm` would look like success.
+inct() { pct exec "$CTID" -- env LC_ALL=C LANG=C bash -ec "$1"; }
 
 install_base() {
   msg_info "Installing base packages…"
@@ -214,8 +247,9 @@ install_app() {
 
   if [[ -n "$REPO_URL" ]]; then
     msg_info "Cloning ${REPO_URL}…"
-    inct "git clone --depth 1 --branch '$BRANCH' '$REPO_URL' /tmp/kram-src >/dev/null 2>&1
-          cp -a /tmp/kram-src/. /opt/kram/ && rm -rf /tmp/kram-src"
+    inct "git clone --depth 1 --branch '$BRANCH' '$REPO_URL' /tmp/kram-src >/dev/null
+          cp -a /tmp/kram-src/. /opt/kram/
+          rm -rf /tmp/kram-src"
     msg_ok "Source cloned"
   else
     # No remote: push the checkout this script is running from.
@@ -376,6 +410,7 @@ main() {
   install_app
   configure_service
   verify
+  CREATED_CTID=""   # success — nothing to clean up
   finish
 }
 

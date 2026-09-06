@@ -38,7 +38,7 @@ NET=192.168.1.50/24 GATEWAY=192.168.1.1 ./deploy/proxmox-install.sh   # static I
 | `NET` / `GATEWAY` | `dhcp` | `GATEWAY` required for a static `NET` |
 | `BRIDGE` | `vmbr0` | |
 | `STORAGE` | auto | First active storage with `rootdir` content |
-| `APP_PORT` | `4310` | |
+| `APP_PORT` | `4310` | Must be >1024 — the unit drops all capabilities |
 | `NODE_MAJOR` | `26` | Must be ≥24 — the script refuses to continue otherwise |
 | `REPO_URL` | `github.com/xcepti0n/kram` | Set to empty to copy the local checkout instead |
 | `ASSUME_YES` | `0` | `1` skips the confirmation prompt |
@@ -197,7 +197,14 @@ cd /opt/kram && git pull
 cd /opt/kram
 npm ci
 npm run build
+
+# If deploy/kram.service changed in the update, copy it in as well — a pull
+# updates the file in the repo, not the one systemd reads from /etc.
+cp deploy/kram.service /etc/systemd/system/kram.service
+systemctl daemon-reload
+
 systemctl restart kram
+systemctl status kram --no-pager
 ```
 
 Migrations apply on boot, inside `openDatabase`, before the server accepts connections — so a

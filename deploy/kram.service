@@ -31,24 +31,30 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=kram
 
-# The process needs to read its own code and write exactly one directory.
-# Everything below is the difference between a compromised dependency owning
-# the container and it owning nothing.
+# Hardening, limited to what an unprivileged LXC can actually do.
+#
+# The mount-namespace directives — ProtectSystem, PrivateTmp, PrivateDevices,
+# ProtectHome, ProtectKernelTunables/Modules, ProtectControlGroups — all need to
+# remount /proc, which an unprivileged container is not permitted to do. Setting
+# them there does not harden anything: the unit fails to start at all, with
+# status=226/NAMESPACE. They are the right settings on bare metal or a VM and
+# the wrong ones here.
+#
+# What remains needs no namespace and still removes the paths that matter:
+# privilege escalation, setuid abuse, and the kernel-facing capability surface.
 NoNewPrivileges=yes
-PrivateTmp=yes
-PrivateDevices=yes
-ProtectSystem=strict
-ProtectHome=yes
-ProtectKernelTunables=yes
-ProtectKernelModules=yes
-ProtectControlGroups=yes
 RestrictSUIDSGID=yes
 RestrictRealtime=yes
 LockPersonality=yes
-MemoryDenyWriteExecute=no
-# ProtectSystem=strict makes the whole filesystem read-only; this is the one
-# path that is not. Backups land here too, so it covers both.
-ReadWritePaths=/opt/kram/data
+RestrictNamespaces=yes
+# The app opens a TCP listener and reads and writes local files. Nothing else.
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+SystemCallArchitectures=native
+
+# The LXC is the isolation boundary here (DD-1); the container's own root
+# filesystem is what a compromise would be confined to. Filesystem confinement
+# below that is the container's job, not systemd's.
 
 # A single-user tracker on a home network. The cap exists to turn a runaway
 # import into a restart rather than an OOM that takes the container with it.

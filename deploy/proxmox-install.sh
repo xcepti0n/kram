@@ -333,10 +333,12 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=kram
 NoNewPrivileges=yes
-PrivateTmp=yes
-ProtectSystem=strict
-ProtectHome=yes
-ReadWritePaths=/opt/kram/data
+RestrictSUIDSGID=yes
+RestrictRealtime=yes
+LockPersonality=yes
+RestrictNamespaces=yes
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=multi-user.target
@@ -366,6 +368,18 @@ verify() {
 
   msg_error "service did not become healthy within 90s."
   echo
+
+  # A unit that never executes its binary fails differently from an app that
+  # crashed, and the fix is different too. Name the case rather than dumping
+  # logs and leaving the reader to spot it.
+  if inct "systemctl show kram -p ExecMainStatus --value | grep -qx 226" 2>/dev/null; then
+    msg_error "systemd could not set up the unit's mount namespace (status 226)."
+    msg_warn  "An unprivileged LXC cannot remount /proc, so ProtectSystem, PrivateTmp and"
+    msg_warn  "the ProtectKernel* directives make the unit unstartable. Remove them from"
+    msg_warn  "/etc/systemd/system/kram.service, then: systemctl daemon-reload && systemctl restart kram"
+    echo
+  fi
+
   inct "systemctl status kram --no-pager -l | head -20" || true
   inct "journalctl -u kram -n 30 --no-pager" || true
   exit 1

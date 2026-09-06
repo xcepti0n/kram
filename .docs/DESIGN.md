@@ -536,6 +536,20 @@ strided the rest by index, which still let a month boundary land beside an alrea
 ticks are placed first, minor ones fill the gaps, and both passes honour the same minimum spacing.
 Stating the rule in the units the collision happens in is what makes it hold at every width.
 
+### DD-29 — Service hardening is bounded by what an unprivileged LXC permits
+**Decision.** The systemd unit uses `NoNewPrivileges`, an empty
+`CapabilityBoundingSet`, `RestrictSUIDSGID`, `RestrictNamespaces`,
+`RestrictAddressFamilies` and `SystemCallArchitectures`. It does **not** use `ProtectSystem`,
+`PrivateTmp`, `PrivateDevices`, `ProtectHome` or the `ProtectKernel*` family.
+**Why.** Those directives are implemented with a mount namespace, and setting one up requires
+remounting `/proc` — which an unprivileged LXC is not permitted to do. Present, they do not harden
+the service; they stop it existing, with `status=226/NAMESPACE` and a restart loop. The first real
+deploy failed exactly this way. The remaining directives need no namespace and still close
+privilege escalation, setuid abuse and the capability surface.
+**Cost.** No filesystem confinement below the container. Acceptable because the LXC *is* the
+isolation boundary (DD-1) — duplicating it inside the guest bought nothing and broke the unit. A
+consequence worth stating: with no capabilities the service cannot bind a port below 1024.
+
 ### DD-28 — Persisted identifiers are never named after the product
 **Decision.** The SQLite file is `app.db`, the export discriminator is
 `task-timeline.export.v1`, and the browser storage key is `app.settings`. None carries the product

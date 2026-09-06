@@ -97,6 +97,10 @@ npm start       # production server from dist/
   below. Both panels dismiss by gesture (DD-25). Touch targets ≥44px; nothing may depend on hover.
   Anything sized in the timeline must be derived from the canvas width, never a constant. A native
   `select` sizes to its widest option — cap it, or it will crush its neighbours on a phone.
+- **Deployment.** The target is an unprivileged LXC, which cannot create a mount namespace. Never
+  add `ProtectSystem`, `PrivateTmp`, `PrivateDevices`, `ProtectHome` or `ProtectKernel*` to the
+  unit — they make it unstartable rather than safer (DD-29). Verify service changes by starting the
+  service, not by running the binary.
 - **Motion.** Animate `transform` and `opacity` only, so work stays on the compositor and off the
   layout path. The timeline's entrance runs on mount alone — never on a range change, which must
   stay immediate (DD-27). Every animation needs a `prefers-reduced-motion` branch that removes it

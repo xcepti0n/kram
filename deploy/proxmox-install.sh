@@ -397,11 +397,107 @@ finish() {
   echo
 }
 
+# ------------------------------------------------------------------ review ---
+
+# Read a line from the user's terminal.
+#
+# Not from stdin: under `bash -c "$(curl ...)"` stdin is not the keyboard, and
+# under a piped `curl | bash` it is the script itself — reading it would eat the
+# remaining source. /dev/tty is the terminal regardless of how stdin is wired.
+ask() {
+  local prompt="$1" default="$2" answer=""
+  if [[ ! -r /dev/tty ]]; then
+    echo "$default"
+    return
+  fi
+  read -r -p "$prompt" answer </dev/tty || answer=""
+  echo "${answer:-$default}"
+}
+
+show_settings() {
+  local net_desc="$NET"
+  [[ "$NET" != "dhcp" ]] && net_desc="$NET via $GATEWAY"
+  local src_desc="$REPO_URL"
+  [[ -z "$REPO_URL" ]] && src_desc="local checkout"
+
+  echo
+  echo "  Container ID   ${CTID:-<next free>}"
+  echo "  Hostname       $HOSTNAME_"
+  echo "  Cores          $CORES"
+  echo "  RAM            ${RAM} MB"
+  echo "  Disk           ${DISK} GB"
+  echo "  Network        $net_desc  (bridge $BRIDGE)"
+  echo "  Storage        ${STORAGE:-<auto-detect>}"
+  echo "  App port       $APP_PORT"
+  echo "  Node           $NODE_MAJOR"
+  echo "  Source         $src_desc"
+  echo
+}
+
+customise() {
+  echo
+  echo "  Press Enter to keep the value shown in brackets."
+  echo
+  CTID=$(ask       "  Container ID [${CTID:-next free}]: " "$CTID")
+  HOSTNAME_=$(ask  "  Hostname [$HOSTNAME_]: " "$HOSTNAME_")
+  CORES=$(ask      "  Cores [$CORES]: " "$CORES")
+  RAM=$(ask        "  RAM in MB [$RAM]: " "$RAM")
+  DISK=$(ask       "  Disk in GB [$DISK]: " "$DISK")
+  APP_PORT=$(ask   "  App port [$APP_PORT]: " "$APP_PORT")
+  BRIDGE=$(ask     "  Bridge [$BRIDGE]: " "$BRIDGE")
+  NET=$(ask        "  Network — 'dhcp' or CIDR e.g. 192.168.1.50/24 [$NET]: " "$NET")
+  if [[ "$NET" != "dhcp" ]]; then
+    GATEWAY=$(ask  "  Gateway [${GATEWAY:-required}]: " "$GATEWAY")
+    while [[ -z "$GATEWAY" ]]; do
+      msg_warn "A gateway is required with a static address."
+      GATEWAY=$(ask "  Gateway: " "")
+    done
+  fi
+  STORAGE=$(ask    "  Storage [${STORAGE:-auto}]: " "$STORAGE")
+
+  # Numeric fields would otherwise fail deep inside `pct create`, where the
+  # error says nothing about which value was wrong.
+  local field
+  for field in CORES RAM DISK APP_PORT; do
+    if ! [[ "${!field}" =~ ^[0-9]+$ ]]; then
+      msg_error "$field must be a number, got '${!field}'."
+      exit 1
+    fi
+  done
+  if [[ -n "$CTID" ]] && ! [[ "$CTID" =~ ^[0-9]+$ ]]; then
+    msg_error "Container ID must be a number, got '$CTID'."
+    exit 1
+  fi
+}
+
+confirm_settings() {
+  # Non-interactive by design: a run with no terminal (cron, a pipe with stdin
+  # closed) proceeds on defaults rather than hanging forever waiting for input.
+  if [[ "${ASSUME_YES:-0}" == "1" || ! -r /dev/tty ]]; then
+    show_settings
+    msg_info "Proceeding with these settings."
+    return
+  fi
+
+  while true; do
+    show_settings
+    local reply
+    reply=$(ask "  [D]efaults shown above, [C]ustomise, or [Q]uit? [D]: " "D")
+    case "${reply,,}" in
+      d|y|yes|"") return ;;
+      c) customise ;;
+      q|n|no) msg_info "Nothing was created."; exit 0 ;;
+      *) msg_warn "Please answer D, C or Q." ;;
+    esac
+  done
+}
+
 # -------------------------------------------------------------------- main ---
 
 main() {
   header
   check_host
+  confirm_settings
   pick_ctid
   pick_storage
   ensure_template

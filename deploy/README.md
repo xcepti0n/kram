@@ -41,9 +41,32 @@ NET=192.168.1.50/24 GATEWAY=192.168.1.1 ./deploy/proxmox-install.sh   # static I
 | `APP_PORT` | `4310` | |
 | `NODE_MAJOR` | `26` | Must be ≥24 — the script refuses to continue otherwise |
 | `REPO_URL` | `github.com/xcepti0n/kram` | Set to empty to copy the local checkout instead |
+| `ASSUME_YES` | `0` | `1` skips the confirmation prompt |
+| `KEEP_ON_FAIL` | `0` | `1` keeps a failed container for inspection instead of destroying it |
 
-It creates the container, installs Node, builds, writes `/etc/kram.env` and the unit, starts the
-service, and health-checks it before telling you the URL. If a step fails it prints the failing
+It shows the settings it is about to use and waits for you before creating anything:
+
+```
+  Container ID   <next free>
+  Hostname       kram
+  Cores          2
+  RAM            1024 MB
+  Disk           8 GB
+  Network        dhcp  (bridge vmbr0)
+  Storage        <auto-detect>
+  App port       4310
+  Node           26
+  Source         https://github.com/xcepti0n/kram.git
+
+  [D]efaults shown above, [C]ustomise, or [Q]uit? [D]:
+```
+
+`D` (or Enter) proceeds, `C` walks each field with the current value in brackets, `Q` exits without
+creating anything. Set `ASSUME_YES=1` to skip the prompt; a run with no terminal attached skips it
+automatically rather than hanging.
+
+Then it creates the container, installs Node, builds, writes `/etc/kram.env` and the unit, starts
+the service, and health-checks it before telling you the URL. If a step fails it prints the failing
 line and the service logs rather than leaving you a half-built container.
 
 The rest of this document is the manual version — worth reading if you want to know what the

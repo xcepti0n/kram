@@ -183,7 +183,9 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [x] `npm test` builds first, so a fresh checkout tests the artefact it just produced
 - [x] `deploy/proxmox-install.sh` — one-shot host installer: creates the LXC, installs Node,
       builds, configures the service, health-checks. Self-contained (no third-party framework
-      sourced at run time). Shellcheck clean; control flow exercised against stubbed `pct`/`pvesm`.
+      sourced at run time). Confirms settings before creating anything (D/C/Q), cleans up a failed
+      container, and reads input from `/dev/tty` so it works under `curl | bash`. Shellcheck clean;
+      every prompt path exercised against a pty with stubbed `pct`/`pvesm`.
 - [ ] Deploy verified end-to-end on the Proxmox LXC — **needs the actual host**
 
 ## Parked

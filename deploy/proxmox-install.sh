@@ -6,7 +6,7 @@
 # unprivileged LXC, installs Node and the app, and leaves a running systemd
 # service behind.
 #
-#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/<you>/kram/main/deploy/proxmox-install.sh)"
+#   bash -c "$(curl -fsSL https://raw.githubusercontent.com/xcepti0n/kram/main/deploy/proxmox-install.sh)"
 #
 # Or, from a checkout on the host:
 #
@@ -22,7 +22,9 @@ set -euo pipefail
 # ------------------------------------------------------------------ config ---
 
 APP="Kram"
-REPO_URL="${REPO_URL:-}"           # set to your git remote, or leave empty to push from the laptop
+# Cloned inside the container. Set REPO_URL="" to copy a local checkout instead
+# (useful for testing a change before pushing it).
+REPO_URL="${REPO_URL-https://github.com/xcepti0n/kram.git}"
 BRANCH="${BRANCH:-main}"
 
 # Defaults, all overridable from the environment:

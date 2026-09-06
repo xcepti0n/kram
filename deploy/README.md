@@ -13,11 +13,14 @@ Everything below assumes a Debian 12 or Ubuntu 24.04 container. Commands run as 
 root:
 
 ```bash
-# From a checkout on the host (no GitHub needed — it copies the working tree in):
-./deploy/proxmox-install.sh
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/xcepti0n/kram/main/deploy/proxmox-install.sh)"
+```
 
-# Or, once the repo is pushed somewhere:
-REPO_URL=https://github.com/<you>/kram.git   bash -c "$(curl -fsSL https://raw.githubusercontent.com/<you>/kram/main/deploy/proxmox-install.sh)"
+That clones the repo inside the container. To install from a local checkout instead — for testing a
+change before pushing it — run it from the repo with `REPO_URL` emptied:
+
+```bash
+REPO_URL= ./deploy/proxmox-install.sh
 ```
 
 Everything is overridable:
@@ -37,7 +40,7 @@ NET=192.168.1.50/24 GATEWAY=192.168.1.1 ./deploy/proxmox-install.sh   # static I
 | `STORAGE` | auto | First active storage with `rootdir` content |
 | `APP_PORT` | `4310` | |
 | `NODE_MAJOR` | `26` | Must be ≥24 — the script refuses to continue otherwise |
-| `REPO_URL` | *(empty)* | Empty means copy the local checkout |
+| `REPO_URL` | `github.com/xcepti0n/kram` | Set to empty to copy the local checkout instead |
 
 It creates the container, installs Node, builds, writes `/etc/kram.env` and the unit, starts the
 service, and health-checks it before telling you the URL. If a step fails it prints the failing
@@ -103,7 +106,7 @@ Either works. Use **A** if the repo is on GitHub, **B** if it is still only on y
 
 ```bash
 cd /opt/kram
-git clone <your-repo-url> .
+git clone https://github.com/xcepti0n/kram.git .
 ```
 
 **B — straight from your laptop, no GitHub needed.** Run this *on the laptop*, from the repo:

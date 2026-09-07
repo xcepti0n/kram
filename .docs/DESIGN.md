@@ -724,3 +724,20 @@ cannot produce subjects. The result carries `behind_by: 0` in that case and the 
 is available" rather than a count — an empty commit list must never be read as "up to date", so the
 service tracks whether git could answer at all, separately from what it answered.
 
+
+### DD-35 — Navigation state lives in the URL, without a router library
+**Decision.** The current view and the open task are held in the address bar: `/`, `/timeline`,
+`/settings`, `/p/:pageId`, with an open task as `?task=:taskId`. `parseRoute`/`routeToPath` in
+`web/src/routing.ts` are the whole mapping; `useRoute` binds them to `history.pushState` and
+`popstate`.
+**Why.** `view` was `useState`, so a refresh always landed on Overview — reported as "refreshing on
+Settings sends you home", but it applied to every page and to any open task, and nothing in the app
+was linkable. The server already answered unknown non-API paths with `index.html`, so no server
+change was needed. A router library was not: `ViewKey` is a four-case discriminated union, and
+adopting one would mean a second copy of the routes to keep in step with it.
+**Why the task is a query parameter, not a path.** The sheet is an overlay on a list, not a view of
+its own. `/p/abc?task=xyz` keeps the page in the URL, so closing the sheet returns to the list it
+was opened from; `/t/xyz` would drop that context and force a guess.
+**Cost.** Two hand-written functions to keep in step with `ViewKey` — covered by a round-trip test
+over every reachable state. Changing view deliberately closes an open task, since carrying it across
+would show a task belonging to another page.

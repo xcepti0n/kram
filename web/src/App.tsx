@@ -32,6 +32,7 @@ import {
   useUpdateTask,
 } from './api/hooks.js';
 import { Sidebar, type ViewKey } from './views/Sidebar.js';
+import { useRoute } from './useRoute.js';
 import { TaskList } from './views/tasks/TaskList.js';
 import { TaskSheet } from './views/tasks/TaskSheet.js';
 import { Timeline } from './views/timeline/Timeline.js';
@@ -50,8 +51,10 @@ const SORT_LABEL: Record<SortMode, string> = {
 };
 
 export function App() {
-  const [view, setView] = useState<ViewKey>({ kind: 'overview' });
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  // View and open task live in the URL (DD-35), so both survive a refresh and
+  // are linkable. Everything below stays local: sort order and whether the
+  // sidebar is open are per-session, not worth a shareable address.
+  const { view, taskId: selectedTaskId, setView, setTaskId: setSelectedTaskId } = useRoute();
   const [sort, setSort] = useState<SortMode>('manual');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);

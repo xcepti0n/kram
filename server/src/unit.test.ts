@@ -14,6 +14,8 @@ import { describe, expect, it } from 'vitest';
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const unit = readFileSync(join(REPO, 'deploy', 'kram.service'), 'utf8');
 const installer = readFileSync(join(REPO, 'deploy', 'proxmox-install.sh'), 'utf8');
+const updateUnit = readFileSync(join(REPO, 'deploy', 'kram-update.service'), 'utf8');
+const polkitRule = readFileSync(join(REPO, 'deploy', '49-kram-update.rules'), 'utf8');
 
 /** Directives implemented with a mount namespace, which the target cannot create. */
 const NAMESPACE_DIRECTIVES = [
@@ -100,5 +102,92 @@ describe('systemd unit', () => {
 
   it('reads its configuration from the env file', () => {
     expect(unit).toMatch(/^EnvironmentFile=\/etc\/kram\.env$/m);
+  });
+});
+
+/**
+ * The update unit runs as root, which is exactly why its shape is worth
+ * pinning down: a mistake here is a privilege mistake, not a availability one.
+ */
+describe('kram-update.service', () => {
+  it('is a oneshot, so systemd waits for it rather than treating it as a daemon', () => {
+    expect(updateUnit).toMatch(/^Type=oneshot$/m);
+  });
+
+  it('runs as root — it installs units and restarts services', () => {
+    expect(updateUnit).toMatch(/^User=root$/m);
+  });
+
+  /*
+   * The absence of [Install] is the point, not an omission. Enabling this unit
+   * would run an update at every boot, so a power cut could silently change the
+   * running version.
+   */
+  it('has no [Install] section, so it can never be enabled at boot', () => {
+    // Section headers only. The unit names [Install] in a comment explaining
+    // why it has none, and a substring match reads that as the section itself
+    // — the same false positive that made the [Service] check wrong once.
+    const sections = updateUnit
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.startsWith('[') && line.endsWith(']'));
+    expect(sections).not.toContain('[Install]');
+    expect(updateUnit).not.toMatch(/^WantedBy=/m);
+  });
+
+  it('allows more memory than the app, because npm ci needs it', () => {
+    const cap = updateUnit.match(/^MemoryMax=(\d+)([MG])$/m);
+    expect(cap).not.toBeNull();
+    const [, size, scale] = cap!;
+    const mb = scale === 'G' ? Number(size) * 1024 : Number(size);
+    expect(mb).toBeGreaterThan(512); // kram.service's ceiling
+  });
+
+  it('bounds its own runtime so a hung update does not wedge the service', () => {
+    expect(updateUnit).toMatch(/^TimeoutStartSec=\d+$/m);
+  });
+
+  it('does not set mount-namespace directives either (DD-29)', () => {
+    for (const name of NAMESPACE_DIRECTIVES) {
+      expect(directives(updateUnit)).not.toContain(name);
+    }
+  });
+});
+
+describe('polkit rule', () => {
+  /*
+   * This grant is what lets an unprivileged process start a root unit. Each
+   * clause narrows it; losing any one of them widens the grant well beyond
+   * what the update feature needs.
+   */
+  it('is scoped to one unit, one verb and one user', () => {
+    expect(polkitRule).toContain('"kram-update.service"');
+    expect(polkitRule).toContain('"start"');
+    expect(polkitRule).toContain('subject.user === "kram"');
+  });
+
+  it('never returns YES unconditionally', () => {
+    // A rule that returns YES outside an if would authorise everything for
+    // everyone — the single worst way this file could be wrong.
+    const lines = polkitRule
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('*') && !l.startsWith('/*'));
+    const yesIndex = lines.findIndex((l) => l.includes('polkit.Result.YES'));
+    expect(yesIndex).toBeGreaterThan(-1);
+    expect(lines.slice(0, yesIndex).join(' ')).toContain('if (');
+  });
+});
+
+describe('installer and updater wiring', () => {
+  it('the installer installs the update unit but never enables it', () => {
+    expect(installer).toContain('kram-update.service');
+    expect(installer).not.toMatch(/systemctl enable[^\n]*kram-update/);
+  });
+
+  it('update.sh installs the new unit and rule, so existing containers get them', () => {
+    const updater = readFileSync(join(REPO, 'deploy', 'update.sh'), 'utf8');
+    expect(updater).toContain('kram-update.service');
+    expect(updater).toContain('49-kram-update.rules');
   });
 });

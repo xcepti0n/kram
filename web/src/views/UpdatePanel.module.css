@@ -1,0 +1,144 @@
+/* Mirrors the shared shapes in Settings.module.css — same tokens, same rhythm,
+   so this section does not read as bolted on. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.heading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--text);
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: 1.55;
+}
+
+/* State words carry the meaning, so they get the weight rather than a colour
+   alone — colour is not available to every reader. */
+.current,
+.behind,
+.unknown {
+  font-weight: var(--font-weight-medium);
+}
+
+.current {
+  color: var(--text);
+}
+
+.behind {
+  color: var(--accent);
+}
+
+.unknown {
+  color: var(--text-muted);
+}
+
+/* ----------------------------------------------------------- commits --- */
+
+.commits {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-width: 72ch;
+}
+
+.commit {
+  display: flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  font-size: var(--font-size-sm);
+  min-width: 0;
+}
+
+.sha {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  background: var(--surface-sunken);
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* A long commit subject must not push the layout wide; the sha stays put and
+   the message truncates. */
+.subject {
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more,
+.hint {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: 1.55;
+}
+
+/* ----------------------------------------------------------- actions --- */
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.button,
+.primary {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text);
+  cursor: pointer;
+  transition: background var(--motion) var(--motion-ease),
+    border-color var(--motion) var(--motion-ease);
+}
+
+.button:hover:not(:disabled),
+.primary:hover:not(:disabled) {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.button:disabled,
+.primary:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .primary {
+    transition: none;
+  }
+}

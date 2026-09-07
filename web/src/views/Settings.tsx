@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import type { ImportMode, Page, Settings as SettingsType } from '@kram/shared';
 import { api } from '../api/client.js';
 import { useToast } from '../components/Toast.js';
+import { UpdatePanel } from './UpdatePanel.js';
 import styles from './Settings.module.css';
 
 interface Props {
@@ -241,6 +242,8 @@ export function Settings({ settings, pages, onChange, onImport, onDeletePage }: 
           </p>
         )}
       </section>
+
+      <UpdatePanel />
     </div>
   );
 }

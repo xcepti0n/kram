@@ -267,6 +267,36 @@ sudo -u kram git -C /opt/kram pull
 
 ---
 
+## Updating from the UI
+
+Settings → Updates checks the git remote and, if the container is set up for it, applies the update
+with one click.
+
+Three pieces have to be in place, and the installer and `update.sh` both put them there:
+
+| File | Where | Why |
+| --- | --- | --- |
+| `kram-update.service` | `/etc/systemd/system/` | Runs `update.sh` as root |
+| `49-kram-update.rules` | `/etc/polkit-1/rules.d/` | Lets the `kram` user start that one unit |
+| `update.sh` | `/opt/kram/deploy/` | The actual update, unchanged |
+
+The app never runs the update itself — it runs as an unprivileged user with no capabilities and
+asks systemd to do it (DD-30). If polkit is missing, the UI says so and points at the command
+instead of showing a button that would fail.
+
+From the shell, the same thing:
+
+```bash
+systemctl start kram-update      # apply
+journalctl -u kram-update -f     # watch it
+```
+
+A failed update rolls itself back — see the rollback logic in `update.sh`.
+
+**The apply endpoint is not authenticated.** Anything that can reach the port can trigger an
+update. That was a deliberate choice for a LAN-only install; it is guarded against cross-site
+submission (DD-31) but it is not a login. Do not expose this port to the internet.
+
 ## Backups
 
 The data is one SQLite file: `/opt/kram/data/app.db`.

@@ -1,0 +1,30 @@
+[Unit]
+Description=Kram — apply pending updates
+# Ordering only; update.sh checks for itself whether the network is usable and
+# fails cleanly if the fetch does not work.
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Runs as root, unlike kram.service. It has to: it installs a systemd unit,
+# restarts a service, and writes into a root-owned checkout. This is the reason
+# the update endpoint is a thin trigger and not the update logic itself — the
+# app must never be the thing running as root.
+User=root
+ExecStart=/opt/kram/deploy/update.sh
+
+# The build step is heavier than the app's own ceiling; npm ci on a small
+# container will exceed kram.service's 512M and be killed halfway through.
+MemoryMax=2G
+
+# An update that hangs must not hold the service down forever. update.sh has
+# its own health-check timeouts well inside this.
+TimeoutStartSec=900
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=kram-update
+
+# No [Install] section. This is triggered on demand — `systemctl start
+# kram-update` — never enabled at boot. Updating automatically on every restart
+# would mean a power cut could change the running version unattended.

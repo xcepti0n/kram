@@ -410,6 +410,32 @@ EOF"
     exit 1
   fi
 
+  # The update unit and the polkit rule that lets the app trigger it. Both are
+  # optional: without them the app still runs and still reports that an update
+  # exists, it just cannot apply one from the UI and says so.
+  if inct "test -f /opt/kram/deploy/kram-update.service"; then
+    inct "cp /opt/kram/deploy/kram-update.service /etc/systemd/system/kram-update.service"
+    # Not enabled, only installed. It is oneshot and triggered on demand;
+    # enabling it would run an update at every boot.
+    msg_ok "Update unit installed"
+  else
+    msg_warn "deploy/kram-update.service missing; updates will have to be applied by hand."
+  fi
+
+  if inct "test -f /opt/kram/deploy/49-kram-update.rules"; then
+    # polkit only reads .rules from this directory, and only when it exists —
+    # on a minimal container polkit may not be installed at all, in which case
+    # the app falls back to reporting that it cannot apply updates.
+    if inct "test -d /etc/polkit-1/rules.d"; then
+      inct "cp /opt/kram/deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules"
+      inct "systemctl restart polkit >/dev/null 2>&1 || true"
+      msg_ok "Update permission granted to the app"
+    else
+      msg_warn "polkit is not installed; the UI cannot trigger updates."
+      msg_warn "Apply them with: systemctl start kram-update"
+    fi
+  fi
+
   inct "systemctl daemon-reload && systemctl enable --now kram >/dev/null 2>&1"
   msg_ok "Service enabled"
 }

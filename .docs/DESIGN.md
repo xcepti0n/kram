@@ -657,3 +657,25 @@ The systemd unit runs `node dist/server/index.js` with `Restart=always`, an env 
 configuration, and `WorkingDirectory` set so the SQLite file resolves to `data/`. Migrations run on
 boot, before the server accepts connections, so a deploy that changes the schema needs no separate
 step.
+
+### DD-30 — The app asks systemd to update; it never updates itself
+**Decision.** `GET /api/updates` reads git state and `POST /api/updates/apply` runs
+`systemctl start --no-block kram-update.service`. The pull, build and restart live in
+`kram-update.service`, a root-owned oneshot. A polkit rule lets the `kram` user start that one unit,
+with that one verb, and nothing else.
+**Why.** The update has to run as root — it writes a systemd unit and restarts a service — but the
+app must not. Putting the logic behind an endpoint in a process that runs as `kram` with an empty
+capability set means the reachable surface is "install what is already on the remote", not "execute
+arbitrary code as root". The privileged half stays in a file root owns and the app cannot edit.
+**Cost.** Three deployment artefacts instead of none, and a feature that silently does nothing on a
+container without polkit — so `can_apply` is reported to the UI rather than assumed.
+
+### DD-31 — Header and fetch-metadata checks on the apply endpoint, not a token
+**Decision.** `POST /api/updates/apply` requires `X-Kram-Request: 1` and rejects a request whose
+`Sec-Fetch-Site` is anything other than `same-origin` or `none`.
+**Why.** There is no authentication yet (DD-4), and the owner accepted an ungated endpoint on a LAN.
+That still leaves CSRF: any page open in a browser on the network can POST here, and a form submits
+without ever reading the response. A cross-site form cannot set a custom header — attempting it
+forces a preflight this server never approves — so the header alone closes the drive-by case.
+**Cost.** Not authentication, and not claimed to be: a deliberate request from the LAN still works,
+which is the access that was chosen. It is replaced by a real check when auth lands.

@@ -198,6 +198,9 @@ decision references (`DD-*`) at `DESIGN.md`.
 - [-] Location arrival notifications (FR-8.3) — needs a background trigger (DD-12)
 - [-] "You are at X, these tasks match" panel — `/api/places/near` already answers it (DD-23)
 - [-] Address search / geocoding — deliberately not built (DD-24)
+- [x] Update checking and one-click apply — `systemctl start kram-update`, or the Settings panel
+      (DD-30, DD-31). The apply button is ungated by the owner's decision, guarded against
+      cross-site submission; it moves behind auth when auth exists.
 - [-] Authentication and page-sharing UI — schema already supports it (DD-4, DD-13)
 - [-] Roles on `page_members` — one-line migration when wanted (DD-13)
 - [-] Conditional prioritisation by location, time or weekday (FR-7.6) — a sort mode (DD-17)

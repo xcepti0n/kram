@@ -17,6 +17,7 @@ import type {
   TimelineResponse,
   UpdatePageInput,
   UpdateSettingsInput,
+  UpdateStatus,
   UpdateTaskInput,
 } from '@kram/shared';
 
@@ -178,6 +179,22 @@ export const api = {
       status_events: number;
       backup?: string;
     }>(`/api/import${qs({ mode })}`, { method: 'POST', body: JSON.stringify(doc) }),
+
+  /* --------------------------------------------------------- updates --- */
+
+  checkUpdates: () => request<UpdateStatus>('/api/updates'),
+
+  /**
+   * Trigger an update. The X-Kram-Request header is required by the server:
+   * applying an update runs privileged work and there is no login yet, so the
+   * header is what distinguishes this call from a cross-site form post, which
+   * cannot set custom headers. Removing it here returns 403.
+   */
+  applyUpdate: () =>
+    request<{ started: boolean }>('/api/updates/apply', {
+      method: 'POST',
+      headers: { 'x-kram-request': '1' },
+    }),
 };
 
 /** Query keys, centralised so invalidation is consistent. */
@@ -188,4 +205,5 @@ export const keys = {
   task: (id: string) => ['task', id] as const,
   timeline: (params: object = {}) => ['timeline', params] as const,
   settings: ['settings'] as const,
+  updates: ['updates'] as const,
 };

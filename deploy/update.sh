@@ -95,6 +95,22 @@ if ! cmp -s deploy/kram.service "$UNIT"; then
   msg_ok "Unit updated"
 fi
 
+# Same reasoning for the update unit and its polkit rule. These arrive by pull
+# like any other file, and an install that predates them has neither — so this
+# is also the path by which an existing container gains the feature.
+if [[ -f deploy/kram-update.service ]] && ! cmp -s deploy/kram-update.service /etc/systemd/system/kram-update.service; then
+  cp deploy/kram-update.service /etc/systemd/system/kram-update.service
+  systemctl daemon-reload
+  msg_ok "Update unit installed"
+fi
+
+if [[ -f deploy/49-kram-update.rules ]] && [[ -d /etc/polkit-1/rules.d ]] \
+   && ! cmp -s deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules; then
+  cp deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules
+  systemctl restart polkit >/dev/null 2>&1 || true
+  msg_ok "Update permission installed"
+fi
+
 # ----------------------------------------------------------------- restart ---
 msg_info "Restarting…"
 systemctl reset-failed kram 2>/dev/null || true

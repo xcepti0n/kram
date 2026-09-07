@@ -28,6 +28,7 @@ import * as places from '../services/places.js';
 import * as tasks from '../services/tasks.js';
 import { buildTimeline } from '../services/timeline.js';
 import { exportAll, importAll } from '../services/transfer.js';
+import { checkForUpdates, startUpdate, UpdateUnavailable } from '../services/updates.js';
 import { BadRequest, NotFound } from '../services/tasks.js';
 
 export interface RouteContext {
@@ -58,6 +59,56 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
   const { db, userId } = ctx;
 
   app.get('/api/health', async () => ({ status: 'ok' }));
+
+  /* ----------------------------------------------------------- updates --- */
+
+  /*
+   * Applying an update runs as root (via kram-update.service) and there is no
+   * authentication on this app yet, so a plain POST would be triggerable by any
+   * page the user happens to have open: a cross-site form submits without ever
+   * reading the response, and that is enough to fire it.
+   *
+   * These two checks close that off without being a login. A cross-site form
+   * cannot set a custom header — doing so forces a CORS preflight that this
+   * server never approves — and Sec-Fetch-Site names the initiator directly on
+   * every browser that sends it. Neither stops a deliberate curl from the LAN,
+   * which is the access the owner has chosen to allow.
+   */
+  const sameOriginOnly = (request: { headers: Record<string, unknown> }): string | null => {
+    const site = request.headers['sec-fetch-site'];
+    if (typeof site === 'string' && site !== 'same-origin' && site !== 'none') {
+      return `cross-site request rejected (Sec-Fetch-Site: ${site})`;
+    }
+    if (request.headers['x-kram-request'] !== '1') {
+      return 'missing X-Kram-Request header';
+    }
+    return null;
+  };
+
+  app.get('/api/updates', async (_request, reply) => {
+    try {
+      return await checkForUpdates();
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  app.post('/api/updates/apply', async (request, reply) => {
+    const rejection = sameOriginOnly(request as never);
+    if (rejection) return reply.code(403).send({ error: rejection });
+
+    try {
+      await startUpdate();
+      // 202: systemd has queued the job. The service is about to restart, so
+      // this response may well be the last thing this process sends.
+      return reply.code(202).send({ started: true });
+    } catch (error) {
+      if (error instanceof UpdateUnavailable) {
+        return reply.code(409).send({ error: error.message });
+      }
+      return handle(reply, error);
+    }
+  });
 
   /* ------------------------------------------------------------- pages --- */
 

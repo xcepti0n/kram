@@ -284,3 +284,33 @@ export type ExportDocument = z.infer<typeof exportDocument>;
 export const IMPORT_MODES = ['merge', 'replace', 'duplicate'] as const;
 export const importMode = z.enum(IMPORT_MODES);
 export type ImportMode = z.infer<typeof importMode>;
+
+/* ------------------------------------------------------------- updates --- */
+
+export const updateCommit = z.object({
+  sha: z.string(),
+  subject: z.string(),
+  date: z.string(),
+});
+export type UpdateCommit = z.infer<typeof updateCommit>;
+
+/**
+ * `state` is deliberately explicit rather than implied by counts. "Cannot
+ * check" is a real state — no network, not a git checkout, no upstream — and
+ * collapsing it into "up to date" would tell the user the opposite of the
+ * truth.
+ */
+export const updateStatus = z.object({
+  state: z.enum(['up-to-date', 'behind', 'unknown']),
+  current: z.string(),
+  current_subject: z.string().optional(),
+  latest: z.string().optional(),
+  behind_by: z.number().int().nonnegative(),
+  commits: z.array(updateCommit),
+  checked_at: z.string(),
+  /** Why the state is 'unknown'. Shown to the user, so it must read plainly. */
+  reason: z.string().optional(),
+  /** False when the server cannot apply updates itself (no unit installed). */
+  can_apply: z.boolean(),
+});
+export type UpdateStatus = z.infer<typeof updateStatus>;

@@ -362,8 +362,85 @@ Don't port-forward this. It has no authentication yet (parked, see
 `.docs/IMPLEMENTATION.md`), so anything that can reach the port has full control of your data.
 
 Use WireGuard into your home network and reach the container by its LAN address, which is what the
-default `HOST=0.0.0.0` supports. If you later put a reverse proxy in front for TLS, set
-`HOST=127.0.0.1` so the app is only reachable through it.
+default `HOST=0.0.0.0` supports. Once you run the TLS setup below, the app moves to
+`HOST=127.0.0.1` and everything goes through Caddy instead.
+
+## HTTPS
+
+The app speaks plain HTTP. `deploy/caddy-install.sh` puts Caddy in front of it, terminating TLS
+with a certificate Caddy issues itself.
+
+Run it inside the container:
+
+```bash
+cd /opt/kram && ./deploy/caddy-install.sh
+```
+
+It installs Caddy, writes `/etc/caddy/Caddyfile` from `deploy/Caddyfile`, switches
+`/etc/kram.env` to `HOST=127.0.0.1`, restarts both services, and prints the trust steps below.
+Re-running it is safe.
+
+Setting `HOST=127.0.0.1` is the part that matters for security: while the app still listens on
+`0.0.0.0`, `http://kram.vaibhavbhatia.net:4310` keeps working and quietly bypasses TLS. The
+plaintext path has to actually close.
+
+### Why a self-issued certificate
+
+`kram.vaibhavbhatia.net` resolves only inside this network — it is an AdGuard rewrite pointing at
+the container. A public CA will not sign for a name it cannot validate from the outside, and
+Let's Encrypt says as much in their own [Certificates for localhost][le-localhost] note; their
+advice for this exact case is to issue your own.
+
+`tls internal` does that: Caddy runs a small CA inside the container, signs a certificate for this
+host, and renews it indefinitely. No external service, no API token, nothing leaving the LAN.
+
+The alternative — a publicly-trusted certificate with no per-device setup — needs DNS-01 validation
+through the domain's registrar, and so a scoped API token living in the container. That trade was
+not worth it here.
+
+[le-localhost]: https://letsencrypt.org/docs/certificates-for-localhost/
+
+### Trusting the certificate
+
+Browsers will warn until the CA root is trusted. The connection is encrypted either way; the
+warning is only about *who vouches for* the certificate. Do this once per device.
+
+Copy the root out, from the Proxmox host:
+
+```bash
+pct pull $CTID \
+  /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt \
+  kram-root.crt
+```
+
+Then install it:
+
+```bash
+# macOS
+sudo security add-trusted-cert -d -r trustRoot \
+  -k /Library/Keychains/System.keychain kram-root.crt
+```
+
+- **iOS** — AirDrop it, install the profile, then turn it on under
+  Settings → General → About → Certificate Trust Settings. The second step is easy to miss; the
+  certificate does nothing until you enable it there.
+- **Android** — Settings → Security → Encryption & credentials → Install a certificate → CA.
+- **Firefox** — keeps its own trust store; import under Settings → Privacy & Security →
+  Certificates → View Certificates → Authorities.
+
+The root is valid for ten years. Leaf certificates rotate automatically and need no action.
+
+### If HTTPS stops working
+
+```bash
+systemctl status caddy
+journalctl -u caddy -n 50 --no-pager
+caddy validate --config /etc/caddy/Caddyfile
+curl -sk https://kram.vaibhavbhatia.net/api/health   # -k skips trust, tests the hop
+```
+
+A working `curl -k` with a browser that still complains means the CA root is not trusted on that
+device — not a server problem.
 
 ## Troubleshooting
 

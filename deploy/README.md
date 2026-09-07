@@ -442,6 +442,23 @@ curl -sk https://kram.vaibhavbhatia.net/api/health   # -k skips trust, tests the
 A working `curl -k` with a browser that still complains means the CA root is not trusted on that
 device — not a server problem.
 
+`Connection refused` on 443 means Caddy is not running at all; the journal will say why. It exits
+before binding anything if the config fails to load, so a config error looks identical to a
+network problem from the client side.
+
+One trap worth knowing: the Debian package runs Caddy under `ProtectSystem=full`, so `/var/log` is
+read-only for it. A `log` directive writing to a file there fails at config load with
+`permission denied` — and no `chown` fixes it, because the path is not writable at all in that
+namespace. Leave logging on the default journald sink.
+
+To back out of HTTPS entirely and return to plain HTTP on the LAN:
+
+```bash
+systemctl disable --now caddy
+sed -i 's|^HOST=127.0.0.1|HOST=0.0.0.0|' /etc/kram.env
+systemctl restart kram
+```
+
 ## Troubleshooting
 
 ```bash

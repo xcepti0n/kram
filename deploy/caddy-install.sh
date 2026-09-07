@@ -44,9 +44,6 @@ else
   msg_ok "Caddy already present ($(caddy version | head -1))"
 fi
 
-mkdir -p /var/log/caddy
-chown caddy:caddy /var/log/caddy
-
 # --------------------------------------------------------------- configure ---
 msg_info "Writing $CADDYFILE…"
 mkdir -p /etc/caddy
@@ -77,20 +74,39 @@ fi
 
 # ------------------------------------------------------------------- start ---
 msg_info "Starting Caddy…"
-systemctl enable --now caddy >/dev/null 2>&1
-systemctl reload caddy 2>/dev/null || systemctl restart caddy
+systemctl enable --now caddy >/dev/null 2>&1 || true
+systemctl reset-failed caddy 2>/dev/null || true
+systemctl restart caddy
 
+# This loop used to fall through to a success message when it never connected,
+# which reported "Done" for a service that was dead. A failed verification has
+# to be louder than a successful one, not quieter.
+healthy=0
 for _ in $(seq 1 20); do
-  # --insecure only because we are talking to the local CA's own certificate
-  # before its root has been trusted anywhere. It proves the TLS handshake and
-  # the proxy hop work; it is not how clients will connect.
-  if curl -skf "https://localhost/api/health" --resolve "${DOMAIN}:443:127.0.0.1" >/dev/null 2>&1 \
-     || curl -skf "https://${DOMAIN}/api/health" >/dev/null 2>&1; then
-    msg_ok "HTTPS is serving"
+  # -k because the local CA's root is not trusted anywhere yet. This checks the
+  # TLS handshake and the proxy hop, not trust.
+  if curl -skf --resolve "${DOMAIN}:443:127.0.0.1" "https://${DOMAIN}/api/health" >/dev/null 2>&1; then
+    healthy=1
     break
   fi
   sleep 1
 done
+
+if [[ "$healthy" -ne 1 ]]; then
+  msg_error "Caddy is not serving HTTPS."
+  echo
+  systemctl status caddy --no-pager -l 2>&1 | head -20
+  echo
+  msg_warn "Recent log:"
+  journalctl -u caddy -n 20 --no-pager 2>&1 | sed 's/^/    /'
+  echo
+  msg_warn "The app itself is unaffected and still running on 127.0.0.1:${APP_PORT}."
+  msg_warn "To undo the localhost binding and go back to plain HTTP on the LAN:"
+  echo "    sed -i 's|^HOST=127.0.0.1|HOST=0.0.0.0|' ${ENV_FILE} && systemctl restart kram"
+  exit 1
+fi
+
+msg_ok "HTTPS is serving"
 
 ROOT_CRT="/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt"
 
@@ -98,14 +114,14 @@ echo
 msg_ok "Done — https://${DOMAIN}"
 echo
 msg_warn "One step left: trust the CA root on each device you browse from."
-echo "  Copy it off the container (run this on your laptop):"
+echo "  Copy it off the container, from the Proxmox host:"
 echo
-echo "    pct pull \$CTID ${ROOT_CRT} kram-root.crt   # from the Proxmox host"
+echo "    pct pull <CTID> ${ROOT_CRT} kram-root.crt"
 echo
 echo "  macOS:  sudo security add-trusted-cert -d -r trustRoot \\"
 echo "            -k /Library/Keychains/System.keychain kram-root.crt"
-echo "  iOS:    AirDrop it, install the profile, then enable it under"
+echo "  iOS:    AirDrop it, install the profile, then ALSO enable it under"
 echo "          Settings > General > About > Certificate Trust Settings"
 echo "  Android: Settings > Security > Encryption & credentials > Install a certificate > CA"
 echo
-echo "  Until then browsers will warn — the connection is still encrypted."
+echo "  Until then browsers warn — the connection is encrypted regardless."

@@ -1,26 +1,24 @@
 # Kram — TLS termination.
 #
-# Installed to /etc/caddy/Caddyfile by deploy/caddy-install.sh. The domain and
-# upstream port are substituted at install time. After editing, run
+# Installed to /etc/caddy/Caddyfile by deploy/caddy-install.sh, with the domain
+# and upstream port substituted in. After editing, run:
 #   systemctl reload caddy
 #
-# Why a local CA and not Let's Encrypt: kram.vaibhavbhatia.net exists only in
-# this network's DNS (an AdGuard rewrite pointing at 192.168.0.94). A public CA
-# will not sign a certificate for a name it cannot validate, and Let's Encrypt
-# says so themselves in "Certificates for localhost" — their advice for exactly
-# this case is to issue your own. That is what `tls internal` does: Caddy runs a
-# small CA, signs for this host, and renews it indefinitely. Nothing leaves the
+# Why a self-issued certificate: kram.vaibhavbhatia.net resolves only inside
+# this network (an AdGuard rewrite pointing at the container). A public CA will
+# not sign for a name it cannot validate from outside, and Let's Encrypt says so
+# themselves in "Certificates for localhost" — their advice for this case is to
+# issue your own. `tls internal` does exactly that: Caddy runs a small CA in the
+# container, signs for this host, and renews indefinitely. Nothing leaves the
 # LAN and there is no API token anywhere.
 #
-# The cost is that the CA root has to be trusted once per device. See the
-# "Trusting the certificate" section of deploy/README.md.
-
-{
-	log {
-		output file /var/log/caddy/caddy.log
-		level INFO
-	}
-}
+# The cost is trusting the CA root once per device — see deploy/README.md.
+#
+# Note there is deliberately no `log` directive. The Debian package runs Caddy
+# under ProtectSystem=full, which remounts /var/log read-only, so pointing a log
+# writer there fails at config load and Caddy exits before binding anything.
+# The default is journald, which is where the rest of this stack already logs:
+#   journalctl -u caddy -f
 
 https://{$KRAM_DOMAIN} {
 	tls internal
@@ -28,14 +26,7 @@ https://{$KRAM_DOMAIN} {
 	encode zstd gzip
 
 	reverse_proxy 127.0.0.1:{$KRAM_PORT} {
-		# Without these the app sees 127.0.0.1 as the client for every request.
+		# Without this the app sees 127.0.0.1 as the client for every request.
 		header_up X-Real-IP {remote_host}
-	}
-
-	log {
-		output file /var/log/caddy/kram-access.log {
-			roll_size 10MiB
-			roll_keep 5
-		}
 	}
 }

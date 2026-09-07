@@ -47,10 +47,15 @@ RestrictSUIDSGID=yes
 RestrictRealtime=yes
 LockPersonality=yes
 RestrictNamespaces=yes
-# The app opens a TCP listener and reads and writes local files. Nothing else.
 CapabilityBoundingSet=
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 SystemCallArchitectures=native
+
+# RestrictAddressFamilies is deliberately NOT set. It reads like it only covers
+# the sockets the app opens, but enumerating network interfaces — which Fastify
+# does on listen, to log the bound addresses — goes through AF_NETLINK. Blocking
+# it makes uv_interface_addresses fail with EAFNOSUPPORT (errno 97) and the
+# process exits after successfully binding the port. The listener is already
+# constrained by HOST in /etc/kram.env, which is the control that matters.
 
 # The LXC is the isolation boundary here (DD-1); the container's own root
 # filesystem is what a compromise would be confined to. Filesystem confinement

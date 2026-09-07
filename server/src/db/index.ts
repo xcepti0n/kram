@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
+import { accessSync, constants, existsSync, mkdirSync, readdirSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { nextColour, between, today } from '@kram/shared';
@@ -22,7 +22,23 @@ function migrationsDir(): string {
 }
 
 export function openDatabase(file: string): DB {
-  if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
+  if (file !== ':memory:') {
+    const dir = dirname(file);
+    /* SQLite reports any of these as "unable to open database file", which sends
+       you looking at the database when the problem is the directory it lives in
+       — the commonest deployment failure, and the least self-explanatory. */
+    try {
+      mkdirSync(dir, { recursive: true });
+      accessSync(dir, constants.W_OK | constants.X_OK);
+    } catch (cause) {
+      throw new Error(
+        `cannot use the data directory ${dir}: ${(cause as Error).message}\n` +
+          `The service runs as its own user and needs to write there. On the deployed host:\n` +
+          `  chown -R kram:kram ${dir}`,
+        { cause },
+      );
+    }
+  }
 
   const db = openSqlite(file);
   // WAL lets readers run alongside a writer, which is all this workload needs.

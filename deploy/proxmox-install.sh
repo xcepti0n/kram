@@ -386,7 +386,6 @@ RestrictRealtime=yes
 LockPersonality=yes
 RestrictNamespaces=yes
 CapabilityBoundingSet=
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 
 [Install]
 WantedBy=multi-user.target

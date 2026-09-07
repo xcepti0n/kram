@@ -413,5 +413,10 @@ cp /opt/kram/deploy/kram.service /etc/systemd/system/kram.service
 systemctl daemon-reload && systemctl reset-failed kram && systemctl restart kram
 ```
 
+**`uv_interface_addresses returned Unknown system error 97`.** Fastify enumerates network
+interfaces when it logs the bound address, which goes through AF_NETLINK. An older unit set
+`RestrictAddressFamilies`, which blocked it — the port bound successfully and then the process
+exited. Update and reinstall the unit; the app also no longer treats this as fatal.
+
 **Wrong Node version.** `node --version` below 24 means `node:sqlite` is missing or experimental and
 the server will not start. Reinstall from the NodeSource repo above.

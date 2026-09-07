@@ -9,7 +9,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { spawn, type ChildProcess } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -89,6 +89,45 @@ describe('production boot', () => {
       expect(JSON.parse(first.body).length).toBeGreaterThan(0);
     } finally {
       stop(booted);
+    }
+  }, 30_000);
+
+  /*
+   * Fastify enumerates network interfaces on listen, to log the bound
+   * addresses. In a container where that syscall is unavailable it throws
+   * EAFNOSUPPORT from an event handler *after* the port is bound — so the app
+   * was working and the process still exited 1. A log line must not be able to
+   * take the service down.
+   */
+  it('survives a failure to enumerate network interfaces', async () => {
+    const dataDir = join(dir, 'nointerfaces');
+    mkdirSync(dataDir, { recursive: true });
+
+    const preload = join(dataDir, 'preload.cjs');
+    writeFileSync(
+      preload,
+      `const os = require('os');
+       os.networkInterfaces = () => {
+         const e = new Error('uv_interface_addresses returned Unknown system error 97');
+         e.code = 'ERR_SYSTEM_ERROR';
+         e.syscall = 'uv_interface_addresses';
+         throw e;
+       };`,
+    );
+
+    const port = takePort();
+    const child = spawn(process.execPath, ['--require', preload, ENTRY], {
+      cwd: REPO,
+      env: { ...process.env, DATA_DIR: dataDir, PORT: String(port), HOST: '127.0.0.1' },
+      stdio: 'ignore',
+    });
+
+    try {
+      const response = await firstResponse(port, '/api/health');
+      expect(response.status).toBe(200);
+      expect(child.exitCode).toBeNull();
+    } finally {
+      child.kill('SIGTERM');
     }
   }, 30_000);
 

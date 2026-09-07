@@ -67,6 +67,14 @@ describe('systemd unit', () => {
     }
   });
 
+  it('does not set RestrictAddressFamilies', () => {
+    /* It reads as if it only constrains the sockets the app opens, but Fastify
+       enumerates interfaces on listen via AF_NETLINK. Blocking that killed the
+       service after it had already bound the port (errno 97). */
+    expect(directives(unit)).not.toContain('RestrictAddressFamilies');
+    expect(installer).not.toMatch(/^RestrictAddressFamilies=/m);
+  });
+
   it('puts StartLimit* in [Unit], where systemd reads them', () => {
     // In [Service] they are silently ignored, disabling the crash-loop guard.
     //

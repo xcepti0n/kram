@@ -36,12 +36,34 @@ const { server } = await buildApp({
   logger: true,
 });
 
+/*
+ * A crash while *reporting* success is still a crash, and this one is real:
+ * Fastify enumerates network interfaces on listen to log the bound addresses,
+ * and in a container where that syscall is unavailable it throws
+ * EAFNOSUPPORT (errno 97) from an event handler — after the port is bound and
+ * the app is working. Losing the log line is acceptable; losing the service
+ * because of a log line is not.
+ *
+ * Registered before listen(), because that is when the throw happens.
+ */
+process.on('uncaughtException', (error: NodeJS.ErrnoException) => {
+  if (error?.syscall === 'uv_interface_addresses') {
+    server.log.warn(
+      `could not enumerate network interfaces (${error.code}); listening on ${HOST}:${PORT}`,
+    );
+    return;
+  }
+  server.log.fatal(error);
+  process.exit(1);
+});
+
 try {
   await server.listen({ port: PORT, host: HOST });
 } catch (error) {
   server.log.error(error);
   process.exit(1);
 }
+
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
   process.on(signal, () => {

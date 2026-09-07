@@ -687,3 +687,26 @@ without ever reading the response. A cross-site form cannot set a custom header 
 forces a preflight this server never approves — so the header alone closes the drive-by case.
 **Cost.** Not authentication, and not claimed to be: a deliberate request from the LAN still works,
 which is the access that was chosen. It is replaced by a real check when auth lands.
+
+### DD-32 — The task row is a grid with named tracks, not a flex row
+**Decision.** `TaskRow` uses `display: grid` with named columns, every child placed explicitly by
+name, and a separate `grid-template-columns` per breakpoint. `.meta` is `display: contents` so its
+children join the row grid directly.
+**Why.** Under flex, each item was positioned by the width of everything before it, so the date and
+status columns landed at a different x on every row — 1232, 1249 and 1271 across three consecutive
+rows. Nothing failed; the list simply could not be scanned down. Named tracks put every row's
+columns in the same place whether or not that row carries a place or a page.
+**Cost.** Each breakpoint must declare its own template. Hiding a child with `display: none` leaves
+its track in place, which wrapped every row onto a second line and doubled the row height — so the
+templates and the visibility rules have to be kept in step. `e2e/layout.spec.ts` asserts a single
+grid line at six widths for exactly this reason.
+
+### DD-33 — Touch targets are grown with pseudo-elements, not by resizing the control
+**Decision.** Small controls keep their drawn size and gain a transparent `::after` with a negative
+inset that extends the hit area to 44px.
+**Why.** The completion checkbox is the most-tapped control in the app and was a 17px target, well
+under half the 44px both Apple and Google specify. Enlarging the circle would have coarsened a
+deliberately dense list; extending the hit box costs nothing visually.
+**Cost.** The reach is invisible in a screenshot and in any assertion on the element's box, so the
+test measures the pseudo-element's inset instead.
+

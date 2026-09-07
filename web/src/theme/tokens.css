@@ -28,7 +28,10 @@
 :root {
   /* Sizing lives on the density axis alone (DD-21). */
   --space-unit-base: 8px;
-  --row-height-base: 42px;
+  /* 44px is the smallest reliable touch target (Apple HIG, Material). At 42 the
+     row itself was fine but the controls inside it were not; raising the base
+     gives them room to grow without the list feeling loose. */
+  --row-height-base: 46px;
   --timeline-row-height-base: 40px;
   --font-size-base-raw: 14.5px;
 

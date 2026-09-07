@@ -55,7 +55,12 @@
   flex-shrink: 0;
 }
 
+/* Touch reach without visual change — see TaskRow's .checkbox for the same
+   technique. A select cannot carry a pseudo-element, so this one grows for
+   real; 38px was already close and 44 costs little. */
 .sortSelect {
+  min-height: 44px;
+
   padding: var(--space-1) var(--space-2);
   border: var(--border-weight) solid var(--border);
   border-radius: var(--radius-sm);

@@ -1,5 +1,28 @@
+/*
+ * A grid, not a flex row.
+ *
+ * Under flex the metadata was pushed right by whatever preceded it, so date and
+ * status landed at a different x on every row (1232, 1249, 1271 for three
+ * consecutive rows) and the eye had nothing to scan down. Fixed tracks put every
+ * row's columns in the same place whether or not it carries a place or a page.
+ *
+ * The title track is capped rather than greedy: at 1440px it took ~900px for
+ * text needing ~250px, stranding the metadata against the far edge with a river
+ * of dead space between.
+ */
 .row {
-  display: flex;
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    [handle] 18px
+    [check] auto
+    [colour] 3px
+    [title] minmax(0, 1fr)
+    [place] auto
+    [page] auto
+    [date] auto
+    [status] auto
+    [actions] auto;
   align-items: center;
   gap: var(--space-3);
   min-height: var(--row-height);
@@ -10,12 +33,77 @@
   transition: background var(--motion) var(--motion-ease);
 }
 
+/* Between the narrow rules and the wide measure the tracks were all `auto`, so
+   the date column drifted with its content — seven distinct x positions across
+   a single list. Fixing the metadata widths here keeps the column readable at
+   tablet sizes. */
+@media (min-width: 721px) and (max-width: 1099px) {
+  .row {
+    grid-template-columns:
+      [handle] 18px
+      [check] auto
+      [colour] 3px
+      [title] minmax(0, 1fr)
+      [place] auto
+      [page] auto
+      [date] 58px
+      [status] 88px
+      [actions] auto;
+  }
+}
+
+@media (min-width: 1100px) {
+  .row {
+    grid-template-columns:
+      [handle] 18px
+      [check] auto
+      [colour] 3px
+      [title] minmax(0, 640px)
+      [place] auto
+      [page] auto
+      [date] 62px
+      [status] 92px
+      [actions] auto
+      [end] 1fr;
+  }
+}
+
 .row:last-child {
   border-bottom: none;
 }
 
+/*
+ * Hover shifts the row's own colour rather than adding a shadow: rows share
+ * edges, so a per-row shadow would draw a line between neighbours and break the
+ * sheet. The accent bar on the left is what signals "this one", cheaply and
+ * without moving anything — a transform here would shift the text under the
+ * cursor mid-read.
+ */
 .row:hover {
   background: var(--surface-hover);
+}
+
+.row::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 2px;
+  height: calc(100% - 12px);
+  border-radius: 0 2px 2px 0;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--motion) var(--motion-ease);
+}
+
+.row:hover::before,
+.row[data-selected]::before {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row::before {
+    transition: none;
+  }
 }
 
 .row[data-selected] {
@@ -34,7 +122,15 @@
   text-decoration-color: var(--text-faint);
 }
 
+.handle::after {
+  content: '';
+  position: absolute;
+  inset: -4px -9px;
+}
+
 .handle {
+  grid-column: handle;
+  position: relative;
   display: grid;
   place-items: center;
   width: 18px;
@@ -66,7 +162,15 @@
   }
 }
 
+/*
+ * The circle stays 17px; the tappable area does not. This is the most-used
+ * control in the app and a 17px target is roughly half what a thumb reliably
+ * hits. A transparent ::after extends the hit box to 44px without changing a
+ * single pixel of what is drawn, so the row keeps its visual density.
+ */
 .checkbox {
+  grid-column: check;
+  position: relative;
   display: grid;
   place-items: center;
   width: 17px;
@@ -76,6 +180,13 @@
   border-radius: 50%;
   color: var(--text-on-accent);
   transition: background var(--motion) var(--motion-ease), border-color var(--motion) var(--motion-ease);
+}
+
+.checkbox::after {
+  content: '';
+  position: absolute;
+  /* (44 - 17) / 2 = 13.5px of invisible reach on every side. */
+  inset: -13.5px;
 }
 
 .checkbox:hover {
@@ -92,10 +203,13 @@
   height: 15px;
   border-radius: 2px;
   flex-shrink: 0;
+  /* Rides in the checkbox track instead of claiming one of its own, so the
+     column count is the same for every row. */
+  grid-column: colour;
 }
 
 .title {
-  flex: 1;
+  grid-column: title;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -103,12 +217,21 @@
   color: var(--text);
 }
 
+/* `display: contents` dissolves the wrapper so its children join the row grid
+   directly — real column alignment without restructuring the JSX. */
 .meta {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-shrink: 0;
+  display: contents;
 }
+
+.location {
+  grid-column: place;
+}
+
+.page {
+  grid-column: page;
+}
+
+
 
 .location,
 .page {
@@ -131,6 +254,8 @@
 }
 
 .date {
+  grid-column: date;
+  text-align: right;
   font-size: var(--font-size-xs);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
@@ -138,10 +263,11 @@
 }
 
 .delete {
+  grid-column: actions;
   display: grid;
   place-items: center;
-  width: 24px;
-  height: 24px;
+  width: 32px;
+  height: 32px;
   border-radius: var(--radius-sm);
   color: var(--text-faint);
   opacity: 0;
@@ -170,6 +296,17 @@
    so they survive; the creation date does not. */
 @media (max-width: 720px) {
   .row {
+    /* No date track here — .date is display:none below, and a track for an
+       absent item is what pushed the remaining cells into a second row. */
+    grid-template-columns:
+      [handle] 18px
+      [check] auto
+      [colour] 3px
+      [title] minmax(0, 1fr)
+      [place] auto
+      [page] auto
+      [status] auto
+      [actions] auto;
     min-height: max(var(--row-height), 46px);
     gap: var(--space-2);
     padding: 0 var(--space-2);
@@ -206,6 +343,16 @@
 
 /* Very narrow: the title and its state are all that fit. */
 @media (max-width: 460px) {
+  .row {
+    grid-template-columns:
+      [handle] 18px
+      [check] auto
+      [colour] 3px
+      [title] minmax(0, 1fr)
+      [status] auto
+      [actions] auto;
+  }
+
   .location,
   .page {
     display: none;

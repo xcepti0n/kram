@@ -1,7 +1,18 @@
+/*
+ * The primary surface of the app, and the only card that had no elevation at
+ * all — a 1px border on a near-identical background, which is what made the
+ * lists read as flat boxes rather than as sheets holding content.
+ *
+ * shadow-sm is deliberately restrained: this is a dense list, not a floating
+ * dialog, and every theme already defines the token for its own palette (the
+ * dark themes use a much stronger alpha, since a soft shadow is invisible on a
+ * dark ground).
+ */
 .root {
   background: var(--surface);
   border: var(--border-weight) solid var(--border);
   border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
   overflow: hidden;
 }
 

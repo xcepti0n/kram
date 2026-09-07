@@ -538,9 +538,10 @@ Stating the rule in the units the collision happens in is what makes it hold at 
 
 ### DD-29 — Service hardening is bounded by what an unprivileged LXC permits
 **Decision.** The systemd unit uses `NoNewPrivileges`, an empty
-`CapabilityBoundingSet`, `RestrictSUIDSGID`, `RestrictNamespaces`,
-`RestrictAddressFamilies` and `SystemCallArchitectures`. It does **not** use `ProtectSystem`,
-`PrivateTmp`, `PrivateDevices`, `ProtectHome` or the `ProtectKernel*` family.
+`CapabilityBoundingSet`, `RestrictSUIDSGID`, `RestrictRealtime`, `LockPersonality`,
+`RestrictNamespaces` and `SystemCallArchitectures`. It does **not** use `ProtectSystem`,
+`PrivateTmp`, `PrivateDevices`, `ProtectHome`, the `ProtectKernel*` family, or
+`RestrictAddressFamilies`.
 **Why.** Those directives are implemented with a mount namespace, and setting one up requires
 remounting `/proc` — which an unprivileged LXC is not permitted to do. Present, they do not harden
 the service; they stop it existing, with `status=226/NAMESPACE` and a restart loop. The first real
@@ -549,6 +550,13 @@ privilege escalation, setuid abuse and the capability surface.
 The unit is asserted by `server/src/unit.test.ts`, because this shipped broken twice: the offending
 directives are valid systemd that works on bare metal, so neither a syntax check nor running the
 binary locally finds them. Only a test that encodes the deployment target does.
+
+`RestrictAddressFamilies` belongs on that list for a different reason, and it cost a second failed
+deploy to find. It reads as though it constrains only the sockets the app opens, but enumerating
+network interfaces goes through `AF_NETLINK` — and Fastify enumerates interfaces on `listen`, to log
+the bound address. Blocking it makes `uv_interface_addresses` fail with `EAFNOSUPPORT` (errno 97)
+*after* the port is bound, so the app worked and the process still exited 1. `HOST` in
+`/etc/kram.env` is the control that actually constrains the listener.
 
 **Cost.** No filesystem confinement below the container. Acceptable because the LXC *is* the
 isolation boundary (DD-1) — duplicating it inside the guest bought nothing and broke the unit. A

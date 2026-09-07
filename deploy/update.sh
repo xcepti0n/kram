@@ -77,12 +77,37 @@ msg_info "Installing dependencies…"
 npm ci --no-audit --no-fund >/dev/null 2>&1
 
 msg_info "Building…"
-npm run build >/dev/null 2>&1
-# shared/dist is the one that fails quietly: a stale tsbuildinfo makes
-# `tsc --build` a no-op and the web build then cannot resolve @kram/shared.
+# Keep the output: on failure it is the only explanation of what went wrong,
+# and discarding it is how a broken build came to report success.
+BUILD_LOG="$(mktemp)"
+if ! npm run build >"$BUILD_LOG" 2>&1; then
+  msg_error "the build failed."
+  tail -30 "$BUILD_LOG" | sed 's/^/    /'
+  msg_warn "Nothing was restarted; the running version is unchanged."
+  rm -f "$BUILD_LOG"
+  exit 1
+fi
+rm -f "$BUILD_LOG"
+
+# Existence is not enough. index.html survives from the previous install, so a
+# web build that fails leaves a stale-but-present file and the check passes
+# while the browser is served the old bundle — which is exactly how an update
+# reported success and changed nothing visible.
 for artefact in shared/dist/index.js web/dist/index.html server/dist/index.js; do
   [[ -f "$artefact" ]] || { msg_error "build did not produce $artefact"; exit 1; }
 done
+
+# The web bundle is content-hashed, so a real rebuild changes the filename that
+# index.html points at. Compare against what the running server is serving.
+NEW_BUNDLE="$(grep -o 'assets/index-[A-Za-z0-9_-]*\.js' web/dist/index.html | head -1)"
+if [[ -z "$NEW_BUNDLE" ]]; then
+  msg_error "web/dist/index.html does not reference a built bundle."
+  exit 1
+fi
+if ! grep -q "$NEW_BUNDLE" <(ls web/dist/assets/ | sed 's|^|assets/|'); then
+  msg_error "index.html points at ${NEW_BUNDLE}, which is not in web/dist/assets."
+  exit 1
+fi
 chown -R kram:kram "$APP_DIR/data" 2>/dev/null || true
 msg_ok "Built"
 

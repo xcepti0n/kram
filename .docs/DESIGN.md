@@ -546,6 +546,10 @@ remounting `/proc` — which an unprivileged LXC is not permitted to do. Present
 the service; they stop it existing, with `status=226/NAMESPACE` and a restart loop. The first real
 deploy failed exactly this way. The remaining directives need no namespace and still close
 privilege escalation, setuid abuse and the capability surface.
+The unit is asserted by `server/src/unit.test.ts`, because this shipped broken twice: the offending
+directives are valid systemd that works on bare metal, so neither a syntax check nor running the
+binary locally finds them. Only a test that encodes the deployment target does.
+
 **Cost.** No filesystem confinement below the container. Acceptable because the LXC *is* the
 isolation boundary (DD-1) — duplicating it inside the guest bought nothing and broke the unit. A
 consequence worth stating: with no capabilities the service cannot bind a port below 1024.

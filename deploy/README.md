@@ -387,5 +387,31 @@ writable path, and the directory must be owned by `kram`. Re-run
 60 seconds so the fault stays visible rather than churning. Read the logs, fix, then
 `systemctl reset-failed kram && systemctl start kram`.
 
+**`git pull` says "detected dubious ownership".** Git refuses to work on a repo owned by another
+user. The install keeps `/opt/kram` root-owned for exactly this reason, but an older install
+chowned the whole tree to `kram`. Fix it once:
+
+```bash
+chown -R root:root /opt/kram && chown -R kram:kram /opt/kram/data
+```
+
+or, if you would rather not change ownership, `git config --global --add safe.directory /opt/kram`.
+
+**`status=226/NAMESPACE`, restarting until it gives up.** The unit contains mount-namespace
+directives (`ProtectSystem`, `PrivateTmp`, `ProtectHome`, `ProtectKernel*`) that an unprivileged
+LXC cannot honour (DD-29). Check the *installed* unit, not the repo's:
+
+```bash
+grep -nE '^(ProtectSystem|PrivateTmp|PrivateDevices|ProtectHome|ProtectKernel)' \
+  /etc/systemd/system/kram.service
+```
+
+Any output means the old unit is still installed. A `git pull` updates the repo, never `/etc`:
+
+```bash
+cp /opt/kram/deploy/kram.service /etc/systemd/system/kram.service
+systemctl daemon-reload && systemctl reset-failed kram && systemctl restart kram
+```
+
 **Wrong Node version.** `node --version` below 24 means `node:sqlite` is missing or experimental and
 the server will not start. Reinstall from the NodeSource repo above.

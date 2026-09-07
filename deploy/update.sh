@@ -83,7 +83,7 @@ npm run build >/dev/null 2>&1
 for artefact in shared/dist/index.js web/dist/index.html server/dist/index.js; do
   [[ -f "$artefact" ]] || { msg_error "build did not produce $artefact"; exit 1; }
 done
-chown -R kram:kram "$APP_DIR"
+chown -R kram:kram "$APP_DIR/data" 2>/dev/null || true
 msg_ok "Built"
 
 # The unit lives in /etc, so a pull alone never updates it. Skipping this is how
@@ -120,7 +120,7 @@ msg_error "service did not come up within 60s — rolling back to ${BEFORE:0:7}.
 git reset --hard --quiet "$BEFORE"
 npm ci --no-audit --no-fund >/dev/null 2>&1
 npm run build >/dev/null 2>&1
-chown -R kram:kram "$APP_DIR"
+chown -R kram:kram "$APP_DIR/data" 2>/dev/null || true
 cp deploy/kram.service "$UNIT" 2>/dev/null || true
 systemctl daemon-reload
 systemctl reset-failed kram 2>/dev/null || true

@@ -293,7 +293,13 @@ install_app() {
   fi
   msg_ok "Build complete"
 
-  inct "chown -R kram:kram /opt/kram"
+  # Only the data directory belongs to the service account. The code stays
+  # root-owned and world-readable: the service just reads it, and chowning the
+  # whole tree makes git refuse to operate as root ("dubious ownership"), which
+  # silently breaks `git pull` and therefore every update.
+  inct "chown -R root:root /opt/kram
+        chown -R kram:kram /opt/kram/data
+        chmod 755 /opt/kram"
 }
 
 # Console and SSH access to the container itself.
@@ -387,6 +393,16 @@ WantedBy=multi-user.target
 EOF"
   fi
 
+  # Catch the namespace directives before starting rather than after five failed
+  # restarts. They are valid systemd and valid on bare metal; they are only
+  # wrong here, so a syntax check would never find them (DD-29).
+  if inct "grep -qE '^(ProtectSystem|PrivateTmp|PrivateDevices|ProtectHome|ProtectKernel|ProtectControlGroups)' /etc/systemd/system/kram.service"; then
+    msg_error "the unit contains mount-namespace directives, which an unprivileged LXC cannot honour."
+    inct "grep -nE '^(ProtectSystem|PrivateTmp|PrivateDevices|ProtectHome|ProtectKernel|ProtectControlGroups)' /etc/systemd/system/kram.service" || true
+    msg_warn "This unit would fail with status=226/NAMESPACE. Remove those lines (DD-29)."
+    exit 1
+  fi
+
   inct "systemctl daemon-reload && systemctl enable --now kram >/dev/null 2>&1"
   msg_ok "Service enabled"
 }
@@ -414,12 +430,20 @@ verify() {
   # A unit that never executes its binary fails differently from an app that
   # crashed, and the fix is different too. Name the case rather than dumping
   # logs and leaving the reader to spot it.
+  # A unit that never executed its binary fails differently from an app that
+  # crashed, and 226 is the one this deployment target produces. Name it.
   if inct "systemctl show kram -p ExecMainStatus --value | grep -qx 226" 2>/dev/null; then
     msg_error "systemd could not set up the unit's mount namespace (status 226)."
     msg_warn  "An unprivileged LXC cannot remount /proc, so ProtectSystem, PrivateTmp and"
-    msg_warn  "the ProtectKernel* directives make the unit unstartable. Remove them from"
-    msg_warn  "/etc/systemd/system/kram.service, then: systemctl daemon-reload && systemctl restart kram"
+    msg_warn  "the ProtectKernel* directives make the unit unstartable."
     echo
+    # The installed unit is the one that matters, not the one in the repo.
+    if inct "grep -qE '^(ProtectSystem|PrivateTmp|PrivateDevices|ProtectHome|ProtectKernel)' /etc/systemd/system/kram.service"; then
+      msg_warn "The installed unit still contains those directives:"
+      inct "grep -nE '^(ProtectSystem|PrivateTmp|PrivateDevices|ProtectHome|ProtectKernel)' /etc/systemd/system/kram.service" || true
+      msg_warn "Remove them, then: systemctl daemon-reload && systemctl reset-failed kram && systemctl restart kram"
+      echo
+    fi
   fi
 
   inct "systemctl status kram --no-pager -l | head -20" || true

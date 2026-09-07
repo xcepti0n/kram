@@ -146,3 +146,45 @@ describe('GET /api/updates', () => {
     }
   });
 });
+
+/*
+ * The check must work against a checkout the service cannot write to.
+ *
+ * /opt/kram is root-owned while the service runs as `kram` — deliberately,
+ * because chowning the repo to the service user is what made git refuse with
+ * "detected dubious ownership". The first implementation used `git fetch`,
+ * which writes .git/FETCH_HEAD, so it failed in production with
+ * `Permission denied` and could never have worked.
+ */
+describe('checking against a read-only checkout', () => {
+  it('does not write to the repository', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'kram-readonly-'));
+    const git = (args: string[]) => execFileSync('git', args, { cwd: dir, stdio: 'ignore' });
+    git(['init', '-q', '-b', 'main']);
+    git(['config', 'user.email', 'test@example.com']);
+    git(['config', 'user.name', 'Test']);
+    git(['commit', '-q', '--allow-empty', '-m', 'initial']);
+    git(['remote', 'add', 'origin', 'https://example.invalid/repo.git']);
+
+    // Snapshot .git so any write shows up, whatever the operation touches.
+    const before = execFileSync('find', [join(dir, '.git'), '-type', 'f'], { encoding: 'utf8' })
+      .trim().split('\n').sort().join('\n');
+
+    const previous = process.env.APP_DIR;
+    process.env.APP_DIR = dir;
+    try {
+      const status = await checkForUpdates();
+      // The remote is unreachable, so this reports unknown — the assertion is
+      // about what it did to the filesystem on the way there.
+      expect(status.state).toBe('unknown');
+    } finally {
+      process.env.APP_DIR = previous;
+    }
+
+    const after = execFileSync('find', [join(dir, '.git'), '-type', 'f'], { encoding: 'utf8' })
+      .trim().split('\n').sort().join('\n');
+    expect(after, 'the update check wrote to .git').toBe(before);
+
+    rmSync(dir, { recursive: true, force: true });
+  }, 40_000);
+});

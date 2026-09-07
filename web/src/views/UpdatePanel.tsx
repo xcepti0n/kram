@@ -66,7 +66,12 @@ export function UpdatePanel() {
         <>
           <p className={styles.description}>
             <span className={styles.behind}>
-              {status.behind_by} {status.behind_by === 1 ? 'update' : 'updates'} available.
+              {/* behind_by is 0 when the new commits are not in the local object
+                  store, which is the normal case: the check uses ls-remote and
+                  never fetches. "An update is available" is true either way. */}
+              {status.behind_by > 0
+                ? `${status.behind_by} ${status.behind_by === 1 ? 'update' : 'updates'} available.`
+                : 'An update is available.'}
             </span>
           </p>
           <ul className={styles.commits}>

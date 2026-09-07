@@ -115,20 +115,32 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
     return unknown('could not determine the current branch.', current);
   }
 
+  /*
+   * `ls-remote`, not `fetch`.
+   *
+   * A fetch writes: it updates remote-tracking refs and .git/FETCH_HEAD. This
+   * process runs as `kram` and the checkout is root-owned on purpose — chowning
+   * it to the service user is what made git refuse with "detected dubious
+   * ownership" and silently break updates altogether. So fetching here failed
+   * with `cannot open '.git/FETCH_HEAD': Permission denied`, and it always
+   * would have.
+   *
+   * ls-remote asks the remote what it has and writes nothing, which is all a
+   * read-only check needs. The privileged half (update.sh, run as root through
+   * kram-update.service) still does a real fetch when applying.
+   */
+  let latest: string;
   try {
-    await git(['fetch', '--quiet', 'origin'], FETCH_TIMEOUT_MS);
+    const line = await git(['ls-remote', 'origin', `refs/heads/${branch}`], FETCH_TIMEOUT_MS);
+    latest = line.split(/\s+/)[0] ?? '';
+    if (!/^[0-9a-f]{40}$/.test(latest)) {
+      return unknown(`the branch ${branch} does not exist on the remote.`, current);
+    }
   } catch (error) {
     const message = (error as Error & { killed?: boolean }).killed
       ? `could not reach the remote within ${FETCH_TIMEOUT_MS / 1000}s.`
-      : `could not fetch from the remote: ${(error as Error).message}`;
+      : `could not reach the remote: ${(error as Error).message}`;
     return unknown(message, current);
-  }
-
-  let latest: string;
-  try {
-    latest = await git(['rev-parse', `origin/${branch}`]);
-  } catch {
-    return unknown(`the branch ${branch} has no upstream on origin.`, current);
   }
 
   const applicable = await canApply();
@@ -146,12 +158,20 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
     };
   }
 
-  // What is on the remote but not here. A local commit that never got pushed
-  // would make this zero while the shas still differ, which is why the state
-  // below is driven by the count and not by the inequality above.
+  /*
+   * The commit list is best-effort by design.
+   *
+   * `git log current..latest` needs `latest` to exist in the local object
+   * store, and without a fetch it usually does not — so this throws far more
+   * often than not. That is fine: knowing an update exists is the point, and
+   * the subjects are a bonus. What must not happen is an empty list being read
+   * as "no changes", so the caller distinguishes the two below.
+   */
   let commits: UpdateCommit[] = [];
+  let haveDetail = false;
   try {
     const log = await git(['log', '--format=%H%x1f%s%x1f%cI', `${current}..${latest}`]);
+    haveDetail = true;
     commits = log
       ? log.split('\n').map((line) => {
           const [sha, subject, date] = line.split('\x1f');
@@ -160,9 +180,11 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
       : [];
   } catch {
     commits = [];
+    haveDetail = false;
   }
 
-  if (commits.length === 0) {
+  // Only trust an empty list when git could actually answer the question.
+  if (haveDetail && commits.length === 0) {
     return {
       state: 'up-to-date',
       current,
@@ -181,7 +203,10 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
     current,
     current_subject: currentSubject,
     latest,
-    behind_by: commits.length,
+    // Without the objects locally the count is unknown, not zero. The UI reads
+    // 0 as "an update is available" and omits the number rather than showing
+    // "0 updates available", which would be worse than saying nothing.
+    behind_by: haveDetail ? commits.length : 0,
     commits,
     checked_at: new Date().toISOString(),
     can_apply: applicable,

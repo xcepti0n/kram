@@ -710,3 +710,17 @@ deliberately dense list; extending the hit box costs nothing visually.
 **Cost.** The reach is invisible in a screenshot and in any assertion on the element's box, so the
 test measures the pseudo-element's inset instead.
 
+### DD-34 — The update check reads the remote without writing to the repository
+**Decision.** `checkForUpdates` uses `git ls-remote`, never `git fetch`. Applying an update still
+fetches, but that happens in `update.sh` under `kram-update.service`, which runs as root.
+**Why.** `/opt/kram` is root-owned while the service runs as `kram` (DD-30) — chowning the checkout
+to the service user is what made git refuse with "detected dubious ownership" and silently break
+updating altogether. A fetch writes remote-tracking refs and `.git/FETCH_HEAD`, so it failed in
+production with `cannot open '.git/FETCH_HEAD': Permission denied` and could never have worked under
+that ownership. `ls-remote` asks the remote what it has and touches nothing locally, which is all a
+read-only check needs.
+**Cost.** The new commits are not in the local object store, so `git log current..latest` usually
+cannot produce subjects. The result carries `behind_by: 0` in that case and the UI says "An update
+is available" rather than a count — an empty commit list must never be read as "up to date", so the
+service tracks whether git could answer at all, separately from what it answered.
+

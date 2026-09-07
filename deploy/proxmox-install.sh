@@ -45,6 +45,13 @@ TEMPLATE_STORAGE="${TEMPLATE_STORAGE:-local}"
 APP_PORT="${APP_PORT:-4310}"
 NODE_MAJOR="${NODE_MAJOR:-26}"
 START_ON_BOOT="${START_ON_BOOT:-1}"
+# Hostname to serve HTTPS on, e.g. kram.example.net. Empty means plain HTTP.
+#
+# Off by default deliberately. TLS here uses a certificate the container issues
+# itself, which no device trusts until its CA root is imported — and enabling it
+# closes the plain-HTTP port. Defaulting it on would hand a new install a
+# browser warning and no obvious way back.
+TLS_DOMAIN="${TLS_DOMAIN:-}"
 OS_VERSION="${OS_VERSION:-12}"     # Debian 12 (bookworm)
 
 # ------------------------------------------------------------------ output ---
@@ -72,6 +79,7 @@ EOF
 # Anything that fails should say where, not just stop.
 # Set once the container exists, so a later failure can clean up after itself.
 CREATED_CTID=""
+TLS_READY=0
 
 # A failed run must not leave a half-built container behind: the next attempt
 # would allocate a fresh ID and leak this one. Destroy it unless KEEP_ON_FAIL=1,
@@ -454,12 +462,40 @@ container_ip() {
   pct exec "$CTID" -- hostname -I 2>/dev/null | awk '{print $1}'
 }
 
+# Put Caddy in front, terminating TLS with a certificate it issues itself.
+#
+# This shells out to deploy/caddy-install.sh rather than reimplementing it, so
+# there is one description of the TLS setup and not two that drift apart. That
+# script is idempotent and does its own verification.
+configure_tls() {
+  [[ -n "$TLS_DOMAIN" ]] || return 0
+
+  msg_info "Setting up HTTPS for ${TLS_DOMAIN}…"
+  # Not fatal: the app is installed and serving by this point. A TLS failure
+  # should leave a working HTTP install behind and say so, not destroy the
+  # container through the ERR trap.
+  if inct "DOMAIN='${TLS_DOMAIN}' /opt/kram/deploy/caddy-install.sh"; then
+    TLS_READY=1
+    msg_ok "HTTPS ready"
+  else
+    msg_warn "HTTPS setup failed — the app is still running over plain HTTP."
+    msg_warn "Re-run inside the container once fixed:"
+    msg_warn "  DOMAIN=${TLS_DOMAIN} /opt/kram/deploy/caddy-install.sh"
+  fi
+}
+
 finish() {
   local ip; ip=$(container_ip)
   echo
   msg_ok "${APP} is installed and running."
   echo
-  echo -e "  ${GN}http://${ip}:${APP_PORT}${CL}"
+  if [[ "${TLS_READY:-0}" == "1" ]]; then
+    echo -e "  ${GN}https://${TLS_DOMAIN}${CL}"
+    echo
+    echo "  Point ${TLS_DOMAIN} at ${ip} in your DNS if you have not already."
+  else
+    echo -e "  ${GN}http://${ip}:${APP_PORT}${CL}"
+  fi
   echo
   echo "  Container : $CTID ($HOSTNAME_)"
   echo "  Data      : /opt/kram/data/app.db"
@@ -469,6 +505,17 @@ finish() {
   echo "  Restart   : pct exec $CTID -- systemctl restart kram"
   echo "  Backup    : pct exec $CTID -- curl -s localhost:${APP_PORT}/api/export > kram-backup.json"
   echo
+  if [[ "${TLS_READY:-0}" == "1" ]]; then
+    echo "  One step left — trust the CA root on each device you browse from."
+    echo "  From this Proxmox host:"
+    echo
+    echo "    pct exec $CTID -- cat /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt > kram-root.crt"
+    echo
+    echo "  macOS: sudo security add-trusted-cert -d -r trustRoot \\"
+    echo "           -k /Library/Keychains/System.keychain kram-root.crt"
+    echo "  Others, and iOS's extra trust toggle: deploy/README.md"
+    echo
+  fi
   msg_warn "No authentication yet — do not port-forward this. Reach it over the LAN or a VPN."
   if [[ "$NET" == "dhcp" ]]; then
     msg_warn "Address came from DHCP. Give $HOSTNAME_ a static lease so it does not move."
@@ -510,6 +557,7 @@ show_settings() {
   echo "  App port       $APP_PORT"
   echo "  Node           $NODE_MAJOR"
   echo "  Source         $src_desc"
+  echo "  HTTPS          ${TLS_DOMAIN:-off (plain HTTP)}"
   echo
 }
 
@@ -533,6 +581,20 @@ customise() {
     done
   fi
   STORAGE=$(ask    "  Storage [${STORAGE:-auto}]: " "$STORAGE")
+  echo
+  echo "  HTTPS uses a certificate the container issues itself. You will need to"
+  echo "  trust its CA root once per device. Leave blank for plain HTTP."
+  TLS_DOMAIN=$(ask "  HTTPS hostname, e.g. kram.example.net [${TLS_DOMAIN:-none}]: " "$TLS_DOMAIN")
+  # "none" is what the prompt shows when unset; treat it as the empty answer
+  # rather than trying to serve a host literally called none.
+  #
+  # Written as if/fi, not `[[ ... ]] && ...`. As the last statement of a
+  # function the && form returns the test's exit status, so a hostname that is
+  # not "none" would make customise() return 1 — and with set -e plus the ERR
+  # trap, that destroys the freshly built container.
+  if [[ "${TLS_DOMAIN,,}" == "none" ]]; then
+    TLS_DOMAIN=""
+  fi
 
   # Numeric fields would otherwise fail deep inside `pct create`, where the
   # error says nothing about which value was wrong.
@@ -586,6 +648,7 @@ main() {
   configure_access
   configure_service
   verify
+  configure_tls
   CREATED_CTID=""   # success — nothing to clean up
   finish
 }

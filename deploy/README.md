@@ -370,7 +370,18 @@ default `HOST=0.0.0.0` supports. Once you run the TLS setup below, the app moves
 The app speaks plain HTTP. `deploy/caddy-install.sh` puts Caddy in front of it, terminating TLS
 with a certificate Caddy issues itself.
 
-Run it inside the container:
+The Proxmox installer can do this for you: choose **C** at the confirmation prompt and enter a
+hostname when it asks, or pass it directly:
+
+```bash
+TLS_DOMAIN=kram.example.net ./deploy/proxmox-install.sh
+```
+
+It is off by default. The certificate is one the container issues itself, so nothing trusts it
+until you import the CA root — defaulting it on would hand a new install a browser warning and no
+obvious way back.
+
+On an existing container, run it directly:
 
 ```bash
 cd /opt/kram && ./deploy/caddy-install.sh
@@ -405,12 +416,22 @@ not worth it here.
 Browsers will warn until the CA root is trusted. The connection is encrypted either way; the
 warning is only about *who vouches for* the certificate. Do this once per device.
 
-Copy the root out, from the Proxmox host:
+Copy the root out. `pct` runs **on the Proxmox host**, not in the container and not on your
+laptop — so either SSH to the host first, or pull it across in one step:
 
 ```bash
-pct pull $CTID \
-  /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt \
-  kram-root.crt
+# From your laptop, in one go:
+ssh root@<proxmox-ip> \
+  "pct exec <CTID> -- cat /var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt" \
+  > ~/Downloads/kram-root.crt
+```
+
+Check it is what you expect before trusting it — you are adding a root CA, and everything it
+signs will be trusted by that machine:
+
+```bash
+openssl x509 -in ~/Downloads/kram-root.crt -noout -subject -dates
+# subject=CN=Caddy Local Authority - 2024 ECC Root
 ```
 
 Then install it:

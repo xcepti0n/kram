@@ -187,6 +187,9 @@ decision references (`DD-*`) at `DESIGN.md`.
       container, and reads input from `/dev/tty` so it works under `curl | bash`. Shellcheck clean;
       every prompt path exercised against a pty with stubbed `pct`/`pvesm`. Console auto-login by
       default, with `ROOT_PASSWORD` and `SSH_KEY` for the alternatives.
+- [x] `deploy/update.sh` — backup, pull, rebuild, reinstall the unit if changed, restart,
+      health-check, and roll back on failure. Manual by design (no timer): migrations run on boot
+      against the only copy of the data.
 - [ ] Deploy verified end-to-end on the Proxmox LXC — **needs the actual host**
 
 ## Parked

@@ -212,6 +212,25 @@ Then open `http://<container-ip>:4310` from your laptop or phone.
 
 ## 7. Updating
 
+If you installed from a git remote, one command does it, inside the container:
+
+```bash
+/opt/kram/deploy/update.sh
+```
+
+It exports a backup first, pulls, rebuilds, reinstalls the unit **if it changed** (a `git pull`
+alone never updates `/etc`), restarts, and health-checks. If the new version does not come up it
+rolls back to the commit that was running and says so. It refuses to run with uncommitted changes
+in `/opt/kram` rather than overwriting them.
+
+**There is no automatic updater, deliberately.** This rebuilds and restarts a service whose
+migrations run on boot against the only copy of your data. Doing that unattended, at an hour when
+nobody is watching, trades a real risk for the convenience of not typing one command. You are the
+only user; there is no security-patch urgency that justifies it.
+
+<details>
+<summary>Or the manual steps</summary>
+
 Whichever way you got the code there in step 4:
 
 ```bash
@@ -233,6 +252,8 @@ systemctl daemon-reload
 systemctl restart kram
 systemctl status kram --no-pager
 ```
+
+</details>
 
 Migrations apply on boot, inside `openDatabase`, before the server accepts connections — so a
 deploy that changes the schema needs no separate step and has no window where the port answers with

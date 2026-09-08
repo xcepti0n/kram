@@ -20,6 +20,7 @@
     [title] minmax(0, 1fr)
     [place] auto
     [page] auto
+    [checklist] auto
     [date] auto
     [status] auto
     [actions] auto;
@@ -46,6 +47,7 @@
       [title] minmax(0, 1fr)
       [place] auto
       [page] auto
+      [checklist] auto
       [date] 58px
       [status] 88px
       [actions] auto;
@@ -61,6 +63,7 @@
       [title] minmax(0, 640px)
       [place] auto
       [page] auto
+      [checklist] auto
       [date] 62px
       [status] 92px
       [actions] auto
@@ -262,6 +265,23 @@
   white-space: nowrap;
 }
 
+/* Checklist progress (DD-36). Placed explicitly like every other cell: without
+   it a task with no list would leave the track empty and shift the row. */
+.checklist {
+  grid-column: checklist;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.checklist[data-complete] {
+  color: var(--status-done);
+}
+
 .delete {
   grid-column: actions;
   display: grid;
@@ -305,6 +325,7 @@
       [title] minmax(0, 1fr)
       [place] auto
       [page] auto
+      [checklist] auto
       [status] auto
       [actions] auto;
     min-height: max(var(--row-height), 46px);
@@ -349,6 +370,7 @@
       [check] auto
       [colour] 3px
       [title] minmax(0, 1fr)
+      [checklist] auto
       [status] auto
       [actions] auto;
   }

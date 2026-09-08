@@ -1,4 +1,6 @@
 import type {
+  ChecklistItem,
+  CreateChecklistItemInput,
   CreatePageInput,
   CreateTaskInput,
   CreateUpdateInput,
@@ -15,6 +17,7 @@ import type {
   TaskStatus,
   TaskWithChildren,
   TimelineResponse,
+  UpdateChecklistItemInput,
   UpdatePageInput,
   UpdateSettingsInput,
   UpdateStatus,
@@ -148,6 +151,36 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ occurred_on }),
     }),
+
+  /* -------------------------------------------------------- checklist --- */
+
+  /* Every mutation returns the task as well as the item: ticking an item also
+     rewrites the day's summary update (DD-36), so the caller would otherwise
+     have no way to know its timeline went stale. */
+
+  addChecklistItem: (taskId: string, input: CreateChecklistItemInput) =>
+    request<{ item: ChecklistItem; task: TaskWithChildren }>(`/api/tasks/${taskId}/checklist`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    }),
+
+  updateChecklistItem: (id: string, input: UpdateChecklistItemInput) =>
+    request<{ item: ChecklistItem; task: TaskWithChildren }>(`/api/checklist/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(input),
+    }),
+
+  moveChecklistItem: (id: string, before_id: string | null, after_id: string | null) =>
+    request<{ item: ChecklistItem; task: TaskWithChildren }>(`/api/checklist/${id}/position`, {
+      method: 'PATCH',
+      body: JSON.stringify({ before_id, after_id }),
+    }),
+
+  deleteChecklistItem: (id: string) =>
+    request<{ task: TaskWithChildren }>(`/api/checklist/${id}`, { method: 'DELETE' }),
+
+  resetChecklist: (taskId: string) =>
+    request<{ task: TaskWithChildren }>(`/api/tasks/${taskId}/checklist/reset`, { method: 'POST' }),
 
   /* --------------------------------------------------------- timeline --- */
   timeline: (params: {

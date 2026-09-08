@@ -18,6 +18,7 @@ import {
 import { DateInput } from '../../components/DateInput.js';
 import { PlacePicker, type PlaceWithCount } from '../../components/PlacePicker.js';
 import { STATUS_LABEL, StatusChip } from '../../components/StatusChip.js';
+import { Checklist } from './Checklist.js';
 import styles from './TaskSheet.module.css';
 
 interface Props {
@@ -32,6 +33,11 @@ interface Props {
   onEditUpdate: (id: string, input: { body?: string; occurred_on?: string }) => void;
   onDeleteUpdate: (id: string) => void;
   onEditStatusEvent: (id: string, occurred_on: string) => void;
+  onAddChecklistItem: (text: string) => void;
+  onToggleChecklistItem: (id: string, checked: boolean) => void;
+  onRenameChecklistItem: (id: string, text: string) => void;
+  onRemoveChecklistItem: (id: string) => void;
+  onResetChecklist: () => void;
 }
 
 type TimelineEntry =
@@ -50,6 +56,11 @@ export function TaskSheet({
   onEditUpdate,
   onDeleteUpdate,
   onEditStatusEvent,
+  onAddChecklistItem,
+  onToggleChecklistItem,
+  onRenameChecklistItem,
+  onRemoveChecklistItem,
+  onResetChecklist,
 }: Props) {
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? '');
@@ -245,6 +256,16 @@ export function TaskSheet({
               />
             </div>
           </div>
+
+          {/* The parts of the task, before the record of it (DD-36). */}
+          <Checklist
+            items={task.checklist}
+            onAdd={onAddChecklistItem}
+            onToggle={onToggleChecklistItem}
+            onRename={onRenameChecklistItem}
+            onRemove={onRemoveChecklistItem}
+            onReset={onResetChecklist}
+          />
 
           <section className={styles.section}>
             <h3 className={styles.sectionTitle}>Progress</h3>

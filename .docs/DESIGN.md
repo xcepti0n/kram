@@ -763,3 +763,14 @@ ticks while keeping the items and their past summaries.
 **Cost.** A new table the transfer layer has to know about — omitting it made export/import silent
 data loss, caught by a round-trip test. `checklist_day` also had to be declared in the export schema,
 because zod strips unknown keys and was dropping the column the SQL had selected.
+
+### DD-37 — Optimistic cache patches must be synchronous for controlled inputs
+**Decision.** `onMutate` for a checklist toggle patches the query cache **before** awaiting
+anything; `cancelQueries` is fired afterwards without awaiting.
+**Why.** The checkbox renders `checked` from query state. Awaiting `cancelQueries` first deferred
+the patch past the paint, so React repainted the box to its old value for a frame before the
+optimistic value landed — a visible flicker, and enough to make Playwright's `.check()` retry
+(it clicks, re-reads the old value, and clicks again, toggling it back).
+**Cost.** The `.check()`/`.uncheck()` helpers are still wrong for a controlled input, because the
+DOM lags the cache by one commit regardless; the tests use `.click()` and assert on the rendered
+count, which is what a person actually reads.

@@ -141,6 +141,11 @@ export const taskSchema = z.object({
   location_lng: z.number().nullable(),
   created_at: z.string(),
   updated_at: z.string(),
+  /* Checklist progress for the row (DD-36). Computed in the list query rather
+     than stored, and absent from the export — a count is derivable from the
+     items themselves, so persisting it would be a second copy to keep true. */
+  checklist_total: z.number().int().optional(),
+  checklist_checked: z.number().int().optional(),
 });
 export type Task = z.infer<typeof taskSchema>;
 

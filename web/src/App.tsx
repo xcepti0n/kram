@@ -8,12 +8,14 @@ import {
   type TaskStatus,
 } from '@kram/shared';
 import {
+  useAddChecklistItem,
   useAddUpdate,
   useChangeStatus,
   useCreatePage,
   useCreatePlace,
   useCreateTask,
   useDeletePage,
+  useDeleteChecklistItem,
   useDeleteTask,
   useDeleteUpdate,
   useEditStatusEvent,
@@ -23,11 +25,13 @@ import {
   usePlaces,
   useRepositionPage,
   useRepositionTask,
+  useResetChecklist,
   useSettings,
   useTask,
   useTasks,
   useTimeline,
   useUpdatePage,
+  useUpdateChecklistItem,
   useUpdateSettings,
   useUpdateTask,
 } from './api/hooks.js';
@@ -102,6 +106,10 @@ export function App() {
   const deletePage = useDeletePage();
   const updateSettings = useUpdateSettings();
   const importData = useImport();
+  const addChecklistItem = useAddChecklistItem();
+  const updateChecklistItem = useUpdateChecklistItem();
+  const deleteChecklistItem = useDeleteChecklistItem();
+  const resetChecklist = useResetChecklist();
 
   /* Theme attributes are mirrored to <html> and localStorage, so the pre-paint
      script in index.html can apply them before React runs (FR-9.4). */
@@ -356,6 +364,19 @@ export function App() {
           onCreatePlace={(name, coords) =>
             createPlace.mutateAsync({ name, lat: coords?.lat, lng: coords?.lng })
           }
+          onAddChecklistItem={(text) =>
+            addChecklistItem.mutate({ taskId: selectedTask.data!.id, input: { text } })
+          }
+          onToggleChecklistItem={(id, checked) =>
+            updateChecklistItem.mutate({ id, taskId: selectedTask.data!.id, input: { checked } })
+          }
+          onRenameChecklistItem={(id, text) =>
+            updateChecklistItem.mutate({ id, taskId: selectedTask.data!.id, input: { text } })
+          }
+          onRemoveChecklistItem={(id) =>
+            deleteChecklistItem.mutate({ id, taskId: selectedTask.data!.id })
+          }
+          onResetChecklist={() => resetChecklist.mutate(selectedTask.data!.id)}
           onClose={() => setSelectedTaskId(null)}
           onUpdate={(input) => updateTask.mutate({ id: selectedTask.data!.id, input })}
           onStatusChange={(status, occurred_on) =>

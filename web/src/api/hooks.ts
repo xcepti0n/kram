@@ -17,12 +17,15 @@ import type {
   CreateTaskInput,
   CreateUpdateInput,
   ImportMode,
+  ChecklistItem,
+  CreateChecklistItemInput,
   Page,
   Settings,
   SortMode,
   Task,
   TaskStatus,
   TaskWithChildren,
+  UpdateChecklistItemInput,
   UpdateSettingsInput,
   UpdateTaskInput,
 } from '@kram/shared';
@@ -449,4 +452,155 @@ function todayString(): string {
 
 function truncate(text: string, max = 40): string {
   return text.length > max ? `${text.slice(0, max - 1)}…` : text;
+}
+
+/* ------------------------------------------------------------ checklist --- */
+
+/**
+ * Patch the open task's cached checklist without waiting for the server.
+ *
+ * Ticking a box is the most-repeated action in a list — a shop is a dozen of
+ * them in a row — so it has to feel instant. Returns a rollback.
+ */
+function patchChecklist(
+  client: QueryClient,
+  taskId: string,
+  fn: (items: ChecklistItem[]) => ChecklistItem[],
+): () => void {
+  const key = keys.task(taskId);
+  const previous = client.getQueryData<TaskWithChildren>(key);
+  if (!previous) return () => {};
+  client.setQueryData<TaskWithChildren>(key, { ...previous, checklist: fn(previous.checklist) });
+  return () => client.setQueryData(key, previous);
+}
+
+export function useAddChecklistItem() {
+  const client = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: ({ taskId, input }: { taskId: string; input: CreateChecklistItemInput }) =>
+      api.addChecklistItem(taskId, input),
+    onSettled: (_data, _error, { taskId }) => {
+      // The day summary changed too, so the timeline and the task both refetch.
+      void client.invalidateQueries({ queryKey: keys.task(taskId) });
+      void client.invalidateQueries({ queryKey: ['timeline'] });
+    },
+    onError: (error: Error) => toast.show(`Could not add item — ${error.message}`, 'error'),
+  });
+}
+
+export function useUpdateChecklistItem() {
+  const client = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      input,
+    }: {
+      id: string;
+      taskId: string;
+      input: UpdateChecklistItemInput;
+    }) => api.updateChecklistItem(id, input),
+
+    onMutate: ({ id, taskId, input }) => {
+      /* Patch the cache FIRST and synchronously.
+       *
+       * The checkbox is controlled — it renders `checked` from query state — so
+       * between the native toggle and the cache update React paints it back to
+       * its old value. Awaiting cancelQueries here deferred the patch by a
+       * frame, which showed as a visible flicker and made Playwright's
+       * .check() retry (it clicks, sees the old value, and clicks again).
+       * cancelQueries still runs, just after the paint. */
+      const rollback = patchChecklist(client, taskId, (items) =>
+        items.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                ...(input.text !== undefined ? { text: input.text } : {}),
+                ...(input.checked !== undefined
+                  ? { checked_on: input.checked ? todayString() : null }
+                  : {}),
+              }
+            : item,
+        ),
+      );
+      void client.cancelQueries({ queryKey: keys.task(taskId) });
+      return { rollback };
+    },
+
+    onError: (error: Error, _vars, context) => {
+      context?.rollback();
+      toast.show(`Could not save item — ${error.message}`, 'error');
+    },
+
+    onSettled: (_data, _error, { taskId }) => {
+      void client.invalidateQueries({ queryKey: keys.task(taskId) });
+      void client.invalidateQueries({ queryKey: ['timeline'] });
+    },
+  });
+}
+
+export function useDeleteChecklistItem() {
+  const client = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: ({ id }: { id: string; taskId: string }) => api.deleteChecklistItem(id),
+
+    onMutate: ({ id, taskId }) => {
+      const rollback = patchChecklist(client, taskId, (items) =>
+        items.filter((item) => item.id !== id),
+      );
+      void client.cancelQueries({ queryKey: keys.task(taskId) });
+      return { rollback };
+    },
+
+    onError: (error: Error, _vars, context) => {
+      context?.rollback();
+      toast.show(`Could not remove item — ${error.message}`, 'error');
+    },
+
+    onSettled: (_data, _error, { taskId }) => {
+      void client.invalidateQueries({ queryKey: keys.task(taskId) });
+      void client.invalidateQueries({ queryKey: ['timeline'] });
+    },
+  });
+}
+
+export function useMoveChecklistItem() {
+  const client = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: ({
+      id,
+      before_id,
+      after_id,
+    }: {
+      id: string;
+      taskId: string;
+      before_id: string | null;
+      after_id: string | null;
+    }) => api.moveChecklistItem(id, before_id, after_id),
+    onSettled: (_data, _error, { taskId }) =>
+      void client.invalidateQueries({ queryKey: keys.task(taskId) }),
+    onError: (error: Error) => toast.show(`Could not reorder — ${error.message}`, 'error'),
+  });
+}
+
+/** Clears every tick, keeping the items: what makes a standing list reusable. */
+export function useResetChecklist() {
+  const client = useQueryClient();
+  const toast = useToast();
+
+  return useMutation({
+    mutationFn: (taskId: string) => api.resetChecklist(taskId),
+    onSettled: (_data, _error, taskId) => {
+      void client.invalidateQueries({ queryKey: keys.task(taskId) });
+      void client.invalidateQueries({ queryKey: ['timeline'] });
+    },
+    onError: (error: Error) => toast.show(`Could not reset the list — ${error.message}`, 'error'),
+  });
 }

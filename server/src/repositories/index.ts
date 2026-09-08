@@ -154,9 +154,18 @@ export function listTasks(db: DB, userId: string, options: ListTasksOptions = {}
 
   // Always ordered by position; alternative sorts are applied in the service
   // layer so that manual order stays the stored truth (DD-17).
+  //
+  // The checklist counts ride along as correlated subqueries (DD-36): the row
+  // shows "6/9" without opening the task, and a second request per row would
+  // cost far more than this does. Tasks with no list get 0/0 and render none.
   return db
     .prepare(
-      `SELECT ${TASK_COLUMNS}
+      `SELECT ${TASK_COLUMNS},
+              (SELECT COUNT(*) FROM checklist_items c
+                WHERE c.task_id = t.id AND c.deleted_at IS NULL) AS checklist_total,
+              (SELECT COUNT(*) FROM checklist_items c
+                WHERE c.task_id = t.id AND c.deleted_at IS NULL
+                  AND c.checked_on IS NOT NULL) AS checklist_checked
          FROM tasks t
          JOIN page_members m ON m.page_id = t.page_id
         WHERE ${where.join(' AND ')}

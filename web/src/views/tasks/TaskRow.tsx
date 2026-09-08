@@ -125,6 +125,30 @@ export function TaskRow({
           </span>
         )}
 
+        {/* Progress at a glance, so a list is visible without opening the task
+            (DD-36). Absent entirely when the task has no checklist. */}
+        {(task.checklist_total ?? 0) > 0 && (
+          <span
+            className={styles.checklist}
+            data-complete={task.checklist_checked === task.checklist_total || undefined}
+            title={`${task.checklist_checked} of ${task.checklist_total} done`}
+            data-testid="row-checklist"
+          >
+            <svg viewBox="0 0 12 12" width="10" height="10" aria-hidden="true">
+              <path
+                d="M1.5 6.2l2 2 4-4.5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+              <path d="M9.5 3h1.2M9.5 6h1.2M9.5 9h1.2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+            </svg>
+            {task.checklist_checked}/{task.checklist_total}
+          </span>
+        )}
+
         <span className={styles.date}>{formatDate(task.created_on)}</span>
 
         <StatusChip

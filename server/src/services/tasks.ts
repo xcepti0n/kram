@@ -97,6 +97,7 @@ export function getTaskWithChildren(
     ...task,
     updates: repo.listUpdates(db, [taskId]),
     status_events: repo.listStatusEvents(db, [taskId]),
+    checklist: repo.listChecklistItems(db, [taskId]),
   };
 }
 
@@ -149,7 +150,7 @@ export function createTask(db: DB, userId: string, input: CreateTaskInput): Task
     repo.insertStatusEvent(db, event);
   })();
 
-  return { ...task, updates: [], status_events: [event] };
+  return { ...task, updates: [], status_events: [event], checklist: [] };
 }
 
 function firstPageId(db: DB, userId: string): string {

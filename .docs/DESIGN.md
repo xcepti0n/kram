@@ -741,3 +741,25 @@ was opened from; `/t/xyz` would drop that context and force a guess.
 **Cost.** Two hand-written functions to keep in step with `ViewKey` — covered by a round-trip test
 over every reachable state. Changing view deliberately closes an open task, since carrying it across
 would show a task belonging to another page.
+
+### DD-36 — A checklist is part of a task, not a second kind of thing
+**Decision.** `checklist_items` hangs off `tasks`. There is no separate to-do entity.
+**Why.** "Buy groceries" and "get the car serviced" are already tasks: they have a page, a status,
+a timeline and an update stream. What they lack is the parts. A parallel list entity would duplicate
+all of that and force every feature to be written twice.
+**Why the timestamps live on the item.** `added_on` and `checked_on` answer "what did I buy, and
+when" directly. Deriving them from an event log would make unchecking a compensating entry rather
+than `checked_on = NULL`, and "what is still outstanding" a fold over history rather than a `WHERE`.
+**Why one summary update per day.** Ticking eight groceries must not put eight lines in the
+timeline. Checklist activity writes ONE `status_updates` row per task per day, tagged with
+`checklist_day` and enforced by a partial unique index on `(task_id, checklist_day)`; updates a
+person typed carry NULL and are untouched. The summary is recomputed from the items on every change
+rather than incremented — an incrementing counter would drift the moment an item was unticked,
+renamed or deleted. An item added and ticked the same day is reported once, as checked.
+**Why the task does not auto-complete.** A standing list (the weekly shop) empties and refills; a
+one-off list (a car service) is finished once. Completing the task when the last item is ticked
+would archive the weekly shop every week, so the row shows progress instead, and `reset` clears the
+ticks while keeping the items and their past summaries.
+**Cost.** A new table the transfer layer has to know about — omitting it made export/import silent
+data loss, caught by a round-trip test. `checklist_day` also had to be declared in the export schema,
+because zod strips unknown keys and was dropping the column the SQL had selected.

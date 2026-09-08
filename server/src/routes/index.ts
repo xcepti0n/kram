@@ -8,6 +8,7 @@ import {
   createPageInput,
   createPlaceInput,
   createTaskInput,
+  createChecklistItemInput,
   createUpdateInput,
   editStatusEventInput,
   editUpdateInput,
@@ -17,12 +18,14 @@ import {
   updatePageInput,
   updatePlaceInput,
   updateSettingsInput,
+  updateChecklistItemInput,
   updateTaskInput,
   type SortMode,
 } from '@kram/shared';
 import { z } from 'zod';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
+import * as checklist from '../services/checklist.js';
 import * as pages from '../services/pages.js';
 import * as places from '../services/places.js';
 import * as tasks from '../services/tasks.js';
@@ -286,6 +289,73 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
   app.post<{ Params: { id: string } }>('/api/updates/:id/restore', async (request, reply) => {
     try {
       return tasks.restoreUpdate(db, userId, request.params.id);
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  /* --------------------------------------------------------- checklist --- */
+
+  /* Items hang off a task (DD-36), so creating one is scoped to the task and
+     every later operation addresses the item directly. Each mutation returns
+     the whole task: ticking an item also rewrites the day's summary update, and
+     the client would otherwise have to guess that its timeline went stale. */
+
+  app.post<{ Params: { id: string } }>('/api/tasks/:id/checklist', async (request, reply) => {
+    try {
+      const input = createChecklistItemInput.parse(request.body);
+      const item = checklist.addItem(db, userId, request.params.id, input);
+      const task = tasks.getTaskWithChildren(db, userId, request.params.id);
+      return reply.code(201).send({ item, task });
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  app.patch<{ Params: { id: string } }>('/api/checklist/:id', async (request, reply) => {
+    try {
+      const input = updateChecklistItemInput.parse(request.body);
+      const item = checklist.updateItem(db, userId, request.params.id, input);
+      return { item, task: tasks.getTaskWithChildren(db, userId, item.task_id) };
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  app.patch<{ Params: { id: string } }>('/api/checklist/:id/position', async (request, reply) => {
+    try {
+      const input = positionInput.parse(request.body);
+      const item = checklist.moveItem(
+        db,
+        userId,
+        request.params.id,
+        input.before_id ?? null,
+        input.after_id ?? null,
+      );
+      return { item, task: tasks.getTaskWithChildren(db, userId, item.task_id) };
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/checklist/:id', async (request, reply) => {
+    try {
+      // Read the task id before the delete, so the response can carry the task.
+      const existing = checklist.getItem(db, userId, request.params.id);
+      checklist.removeItem(db, userId, request.params.id);
+      return { task: tasks.getTaskWithChildren(db, userId, existing.task_id) };
+    } catch (error) {
+      return handle(reply, error);
+    }
+  });
+
+  /* Clears every tick but keeps the items: what makes a standing list (the
+     weekly shop) reusable, where a one-off list (a car service) is simply
+     finished. Deliberately does not touch the task's status. */
+  app.post<{ Params: { id: string } }>('/api/tasks/:id/checklist/reset', async (request, reply) => {
+    try {
+      checklist.resetChecklist(db, userId, request.params.id);
+      return { task: tasks.getTaskWithChildren(db, userId, request.params.id) };
     } catch (error) {
       return handle(reply, error);
     }

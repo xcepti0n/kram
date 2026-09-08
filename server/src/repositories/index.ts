@@ -7,6 +7,7 @@
  */
 import type { DB } from '../db/index.js';
 import type {
+  ChecklistItem,
   Page,
   Place,
   Settings,
@@ -402,6 +403,155 @@ export function getStatusEvent(db: DB, userId: string, eventId: string): StatusE
 
 export function editStatusEvent(db: DB, eventId: string, occurredOn: string): void {
   db.prepare('UPDATE status_events SET occurred_on = ? WHERE id = ?').run(occurredOn, eventId);
+}
+
+/* ----------------------------------------------------------- checklist --- */
+
+export function listChecklistItems(db: DB, taskIds: readonly string[]): ChecklistItem[] {
+  if (taskIds.length === 0) return [];
+  const placeholders = taskIds.map(() => '?').join(', ');
+  return db
+    .prepare(
+      `SELECT id, task_id, text, position, added_on, checked_on, created_at, updated_at
+         FROM checklist_items
+        WHERE task_id IN (${placeholders}) AND deleted_at IS NULL
+        ORDER BY position`,
+    )
+    .all(...taskIds) as ChecklistItem[];
+}
+
+/** One item the user can see, resolved through its task's page membership. */
+export function getChecklistItem(
+  db: DB,
+  userId: string,
+  itemId: string,
+): ChecklistItem | undefined {
+  return db
+    .prepare(
+      `SELECT c.id, c.task_id, c.text, c.position, c.added_on, c.checked_on,
+              c.created_at, c.updated_at
+         FROM checklist_items c
+         JOIN tasks t ON t.id = c.task_id
+         JOIN page_members m ON m.page_id = t.page_id
+        WHERE c.id = ? AND m.user_id = ? AND c.deleted_at IS NULL AND t.deleted_at IS NULL`,
+    )
+    .get(itemId, userId) as ChecklistItem | undefined;
+}
+
+export function insertChecklistItem(db: DB, item: ChecklistItem): void {
+  db.prepare(
+    `INSERT INTO checklist_items
+       (id, task_id, text, position, added_on, checked_on, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    item.id,
+    item.task_id,
+    item.text,
+    item.position,
+    item.added_on,
+    item.checked_on,
+    item.created_at,
+    item.updated_at,
+  );
+}
+
+export function updateChecklistItem(
+  db: DB,
+  itemId: string,
+  fields: { text?: string; checked_on?: string | null; position?: string },
+  at: string,
+): void {
+  const sets: string[] = [];
+  const values: unknown[] = [];
+  // `checked_on` is set to null on uncheck, so presence of the key decides
+  // whether it is written — not truthiness.
+  for (const key of ['text', 'checked_on', 'position'] as const) {
+    if (key in fields) {
+      sets.push(`${key} = ?`);
+      values.push(fields[key]);
+    }
+  }
+  if (sets.length === 0) return;
+  sets.push('updated_at = ?');
+  values.push(at, itemId);
+  db.prepare(`UPDATE checklist_items SET ${sets.join(', ')} WHERE id = ?`).run(...values);
+}
+
+export function softDeleteChecklistItem(db: DB, itemId: string, at: string): void {
+  db.prepare('UPDATE checklist_items SET deleted_at = ?, updated_at = ? WHERE id = ?').run(
+    at,
+    at,
+    itemId,
+  );
+}
+
+export function checklistPositions(db: DB, taskId: string): { id: string; position: string }[] {
+  return db
+    .prepare(
+      `SELECT id, position FROM checklist_items
+        WHERE task_id = ? AND deleted_at IS NULL ORDER BY position`,
+    )
+    .all(taskId) as { id: string; position: string }[];
+}
+
+/** Counts for the summary line, in one pass. */
+export function checklistCounts(db: DB, taskId: string): { total: number; checked: number } {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS total,
+              COUNT(checked_on) AS checked
+         FROM checklist_items
+        WHERE task_id = ? AND deleted_at IS NULL`,
+    )
+    .get(taskId) as { total: number; checked: number };
+}
+
+/* --- the day's summary update ---
+ *
+ * Checklist activity writes ONE update row per task per day, rewritten as more
+ * items change that day (DD-36). Ticking eight groceries must not put eight
+ * lines in the timeline. A partial unique index on
+ * (task_id, checklist_day) WHERE checklist_day IS NOT NULL makes this an
+ * upsert; updates a person typed carry NULL and are untouched.
+ */
+
+export function getChecklistUpdateForDay(
+  db: DB,
+  taskId: string,
+  day: string,
+): StatusUpdate | undefined {
+  return db
+    .prepare(
+      `SELECT id, task_id, body, occurred_on, created_by, created_at
+         FROM status_updates
+        WHERE task_id = ? AND checklist_day = ? AND deleted_at IS NULL`,
+    )
+    .get(taskId, day) as StatusUpdate | undefined;
+}
+
+export function insertChecklistUpdate(db: DB, update: StatusUpdate, day: string): void {
+  db.prepare(
+    `INSERT INTO status_updates
+       (id, task_id, body, occurred_on, created_by, created_at, checklist_day)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run(
+    update.id,
+    update.task_id,
+    update.body,
+    update.occurred_on,
+    update.created_by,
+    update.created_at,
+    day,
+  );
+}
+
+export function setChecklistUpdateBody(db: DB, updateId: string, body: string): void {
+  db.prepare('UPDATE status_updates SET body = ? WHERE id = ?').run(body, updateId);
+}
+
+/** Used when a day's activity is undone entirely, leaving nothing to report. */
+export function deleteChecklistUpdate(db: DB, updateId: string): void {
+  db.prepare('DELETE FROM status_updates WHERE id = ?').run(updateId);
 }
 
 /* -------------------------------------------------------------- places --- */

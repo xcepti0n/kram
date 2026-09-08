@@ -144,9 +144,45 @@ export const taskSchema = z.object({
 });
 export type Task = z.infer<typeof taskSchema>;
 
+/* A checklist item is a part of a task, not a task of its own (DD-36): the
+   task already carries the page, status, timeline and update stream that a
+   separate to-do entity would have had to duplicate. */
+export const checklistItemSchema = z.object({
+  id,
+  task_id: id,
+  text: z.string().min(1).max(500),
+  position: z.string().min(1),
+  added_on: isoDate,
+  // Null while outstanding. Unchecking clears it, so the item returns to the
+  // list without leaving a compensating entry behind.
+  checked_on: isoDate.nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+export type ChecklistItem = z.infer<typeof checklistItemSchema>;
+
+export const createChecklistItemInput = z.object({
+  text: z.string().min(1).max(500),
+  // Placement is optional: an item appended to the end needs neither neighbour.
+  before_id: id.nullish(),
+  after_id: id.nullish(),
+});
+export type CreateChecklistItemInput = z.infer<typeof createChecklistItemInput>;
+
+export const updateChecklistItemInput = z
+  .object({
+    text: z.string().min(1).max(500).optional(),
+    // `checked` rather than a date: the client says what happened, the server
+    // decides when, exactly as it does for a status change.
+    checked: z.boolean().optional(),
+  })
+  .refine((v) => Object.keys(v).length > 0, { message: 'no fields to update' });
+export type UpdateChecklistItemInput = z.infer<typeof updateChecklistItemInput>;
+
 export const taskWithChildren = taskSchema.extend({
   updates: z.array(statusUpdateSchema),
   status_events: z.array(statusEventSchema),
+  checklist: z.array(checklistItemSchema),
 });
 export type TaskWithChildren = z.infer<typeof taskWithChildren>;
 
@@ -273,8 +309,22 @@ export const exportDocument = z.object({
   tasks: z.array(
     taskSchema.extend({
       deleted_at: z.string().nullish(),
-      updates: z.array(statusUpdateSchema.extend({ deleted_at: z.string().nullish() })),
+      updates: z.array(
+        statusUpdateSchema.extend({
+          deleted_at: z.string().nullish(),
+          // Marks a generated checklist day-summary (DD-36). Declared here
+          // because zod strips unknown keys: without it the export selects the
+          // column and then silently drops it, and a restored summary is no
+          // longer recognised as one.
+          checklist_day: z.string().nullish(),
+        }),
+      ),
       status_events: z.array(statusEventSchema),
+      // Optional, like `places`: a backup written before checklists existed is
+      // still a valid document and must keep importing.
+      checklist: z
+        .array(checklistItemSchema.extend({ deleted_at: z.string().nullish() }))
+        .optional(),
     }),
   ),
   settings: z.array(settingsSchema),

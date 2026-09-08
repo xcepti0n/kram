@@ -75,8 +75,17 @@ export function exportAll(db: DB, includeDeleted = false): ExportDocument {
   ).map((task) => {
     const updates = db
       .prepare(
-        `SELECT id, task_id, body, occurred_on, created_by, created_at, deleted_at
+        `SELECT id, task_id, body, occurred_on, created_by, created_at, deleted_at, checklist_day
            FROM status_updates WHERE task_id = ? ${deletedFilter} ORDER BY occurred_on, created_at`,
+      )
+      .all(task.id);
+    // Checklist items travel with their task (DD-36). Without this a backup
+    // silently drops every list, which is the failure a backup exists to avoid.
+    const checklist = db
+      .prepare(
+        `SELECT id, task_id, text, position, added_on, checked_on,
+                created_at, updated_at, deleted_at
+           FROM checklist_items WHERE task_id = ? ${deletedFilter} ORDER BY position`,
       )
       .all(task.id);
     const events = db
@@ -96,6 +105,11 @@ export function exportAll(db: DB, includeDeleted = false): ExportDocument {
         return row;
       }),
       status_events: events,
+      checklist: checklist.map((c) => {
+        const row = c as Record<string, unknown>;
+        if (!includeDeleted) delete row.deleted_at;
+        return row;
+      }),
     };
   });
 
@@ -139,6 +153,7 @@ export interface ImportResult {
   tasks: number;
   updates: number;
   status_events: number;
+  checklist_items: number;
   backup?: string;
 }
 
@@ -177,6 +192,7 @@ export function importAll(
     tasks: 0,
     updates: 0,
     status_events: 0,
+    checklist_items: 0,
   };
 
   if (mode === 'replace') {
@@ -198,6 +214,7 @@ export function importAll(
   const run = db.transaction(() => {
     if (mode === 'replace') {
       // Children first — foreign keys are on.
+      db.exec('DELETE FROM checklist_items');
       db.exec('DELETE FROM status_events');
       db.exec('DELETE FROM status_updates');
       db.exec('DELETE FROM tasks');
@@ -289,8 +306,9 @@ export function importAll(
 
       for (const update of task.updates) {
         db.prepare(
-          `INSERT INTO status_updates (id, task_id, body, occurred_on, created_by, created_at, deleted_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO status_updates
+             (id, task_id, body, occurred_on, created_by, created_at, deleted_at, checklist_day)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         ).run(
           idFor(update.id),
           taskId,
@@ -299,8 +317,31 @@ export function importAll(
           update.created_by,
           update.created_at,
           update.deleted_at ?? null,
+          // Carried across so a restored day-summary is still recognised as
+          // one; dropping it would make the next tick write a second row for
+          // the same day, which the partial unique index would then reject.
+          (update as { checklist_day?: string | null }).checklist_day ?? null,
         );
         result.updates += 1;
+      }
+
+      for (const item of task.checklist ?? []) {
+        db.prepare(
+          `INSERT INTO checklist_items
+             (id, task_id, text, position, added_on, checked_on, created_at, updated_at, deleted_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        ).run(
+          idFor(item.id),
+          taskId,
+          item.text,
+          item.position,
+          item.added_on,
+          item.checked_on,
+          item.created_at,
+          item.updated_at,
+          item.deleted_at ?? null,
+        );
+        result.checklist_items += 1;
       }
 
       for (const event of task.status_events) {

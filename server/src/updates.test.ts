@@ -9,11 +9,13 @@
 import type { FastifyInstance } from 'fastify';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp } from './app.js';
-import { checkForUpdates } from './services/updates.js';
+import { canApply, checkForUpdates } from './services/updates.js';
 import type { UpdateStatus } from '@kram/shared';
 
 let server: FastifyInstance;
@@ -187,4 +189,55 @@ describe('checking against a read-only checkout', () => {
 
     rmSync(dir, { recursive: true, force: true });
   }, 40_000);
+});
+
+/**
+ * `canApply` gates the update button (DD-30).
+ *
+ * It had no tests, which is how it shipped using `systemctl start --dry-run`
+ * as a permission check. The dry-run validates the unit and plans the job but
+ * does not consult polkit, so it returned true for a user polkit refused: the
+ * button appeared and pressing it gave "Access denied". These pin the two
+ * properties that matter — it must not claim permission it has not verified,
+ * and it must never call the systemd verb it is only supposed to be testing.
+ */
+describe('canApply', () => {
+  it('does not use --dry-run as the permission check', async () => {
+    const source = await readFile(
+      join(dirname(fileURLToPath(import.meta.url)), 'services', 'updates.ts'),
+      'utf8',
+    );
+    const fn = source.slice(source.indexOf('export async function canApply'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+
+    expect(body, 'canApply must not treat --dry-run as authorisation').not.toContain('--dry-run');
+    expect(body, 'canApply should ask polkit directly').toContain('pkcheck');
+  });
+
+  /* A check that starts the unit would apply an update just by rendering the
+     settings page. */
+  it('never actually starts the unit', async () => {
+    const source = await readFile(
+      join(dirname(fileURLToPath(import.meta.url)), 'services', 'updates.ts'),
+      'utf8',
+    );
+    const fn = source.slice(source.indexOf('export async function canApply'));
+    const body = fn.slice(0, fn.indexOf('\n}'));
+
+    expect(body).not.toMatch(/'systemctl'/);
+  });
+
+  it('reports no permission when polkit is unavailable', async () => {
+    // PATH without pkcheck: spawning it fails, which must read as "cannot",
+    // never as "probably fine".
+    // A static import is fine: canApply reads PATH when it spawns, not at
+    // module load, and vite rejects a cache-busting dynamic specifier anyway.
+    const original = process.env.PATH;
+    process.env.PATH = '/nonexistent';
+    try {
+      expect(await canApply()).toBe(false);
+    } finally {
+      process.env.PATH = original;
+    }
+  });
 });

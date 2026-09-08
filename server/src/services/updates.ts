@@ -59,14 +59,19 @@ function unknown(reason: string, current = 'unknown'): UpdateStatus {
 /**
  * Whether this process can actually trigger an update.
  *
- * Two things have to be true and it is worth checking both. The unit has to
- * exist, and polkit has to permit *this user* to start it — the app runs as
- * `kram`, and `systemctl start` is privileged. Checking only for the file would
- * light up a button that then fails with an authentication error, which is a
- * worse experience than not offering it.
+ * Two things have to be true. The unit has to exist, and polkit has to permit
+ * *this user* to start it — the app runs as `kram`, and `systemctl start` is
+ * privileged. A button that appears and then fails is worse than no button.
  *
- * `--dry-run` asks systemd to authorise and plan the job without running it, so
- * this is a real permission check and not a guess.
+ * This used to use `systemctl start --dry-run`, on the belief that it
+ * authorises the job without running it. It does not: it validates the unit and
+ * plans the transaction, and returns success for a user polkit would refuse.
+ * In production the dry-run passed, the button appeared, and pressing it gave
+ * "Access denied" — the guard against exactly that failure could not fail.
+ *
+ * `pkcheck` asks polkit the real question. If polkit is not installed at all
+ * (common on a minimal container) there is no way to authorise the start, so
+ * the answer is a definite no rather than an optimistic yes.
  */
 export async function canApply(): Promise<boolean> {
   const installed =
@@ -74,12 +79,32 @@ export async function canApply(): Promise<boolean> {
     existsSync('/lib/systemd/system/kram-update.service');
   if (!installed) return false;
 
+  // Root needs no authorisation and pkcheck may not be present for it either.
+  if (typeof process.getuid === 'function' && process.getuid() === 0) return true;
+
   try {
-    await run('systemctl', ['start', '--dry-run', '--no-block', 'kram-update.service'], {
-      timeout: GIT_TIMEOUT_MS,
-    });
+    // --process with our own pid is what makes this a question about *this*
+    // caller rather than an abstract one. The unit and verb have to match the
+    // rule's lookups exactly, or a correctly installed rule reads as absent.
+    await run(
+      'pkcheck',
+      [
+        '--action-id',
+        'org.freedesktop.systemd1.manage-units',
+        '--process',
+        String(process.pid),
+        '--detail',
+        'unit',
+        'kram-update.service',
+        '--detail',
+        'verb',
+        'start',
+      ],
+      { timeout: GIT_TIMEOUT_MS },
+    );
     return true;
   } catch {
+    // Not authorised, or pkcheck is missing — either way the start would fail.
     return false;
   }
 }

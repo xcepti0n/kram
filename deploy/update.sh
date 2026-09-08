@@ -129,11 +129,56 @@ if [[ -f deploy/kram-update.service ]] && ! cmp -s deploy/kram-update.service /e
   msg_ok "Update unit installed"
 fi
 
-if [[ -f deploy/49-kram-update.rules ]] && [[ -d /etc/polkit-1/rules.d ]] \
-   && ! cmp -s deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules; then
-  cp deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules
-  systemctl restart polkit >/dev/null 2>&1 || true
-  msg_ok "Update permission installed"
+# The polkit rule is what lets the UI's update button work at all. This used to
+# be guarded on /etc/polkit-1/rules.d already existing, which on a minimal
+# container it does not — so the rule was skipped silently and the button
+# failed with "Access denied". Install polkit if it is missing, and say so
+# clearly when that cannot be done.
+if [[ -f deploy/49-kram-update.rules ]]; then
+  if [[ ! -d /etc/polkit-1/rules.d ]]; then
+    msg_info "Installing polkit so the UI can trigger updates…"
+    if DEBIAN_FRONTEND=noninteractive apt-get install -y polkitd >/dev/null 2>&1 \
+       || DEBIAN_FRONTEND=noninteractive apt-get install -y policykit-1 >/dev/null 2>&1; then
+      msg_ok "polkit installed"
+    else
+      msg_warn "could not install polkit; the update button will not work."
+      msg_warn "Updating from the shell with this script keeps working."
+    fi
+  fi
+
+  if [[ -d /etc/polkit-1/rules.d ]]; then
+    if ! cmp -s deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules; then
+      cp deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules
+      systemctl restart polkit >/dev/null 2>&1 || true
+      msg_ok "Update permission installed"
+    fi
+
+    # Verify rather than assume: pkcheck asks polkit the same question the app
+    # will ask, as the same user. A rule that is present but not in effect
+    # (polkit not reloaded, a syntax error in the JavaScript) is invisible
+    # otherwise, and shows up only as a button that fails.
+    # Read the user from the unit rather than hardcoding it: that is the
+    # value the polkit rule has to match, so checking anything else would
+    # verify a question nobody asks.
+    SERVICE_USER="$(sed -n 's/^User=//p' "$UNIT" 2>/dev/null | head -1)"
+    SERVICE_USER="${SERVICE_USER:-kram}"
+
+    if command -v pkcheck >/dev/null 2>&1 && command -v runuser >/dev/null 2>&1; then
+      # --process "$$" would name *this* shell, which is root and would pass
+      # regardless. Inside runuser the subject has to be the runuser'd process
+      # itself, so the pid is resolved there, not here.
+      if runuser -u "$SERVICE_USER" -- sh -c 'pkcheck \
+           --action-id org.freedesktop.systemd1.manage-units \
+           --detail unit kram-update.service \
+           --detail verb start \
+           --process $$' >/dev/null 2>&1; then
+        msg_ok "Update permission verified"
+      else
+        msg_warn "the polkit rule is installed but not granting permission."
+        msg_warn "The UI's update button will fail; use this script instead."
+      fi
+    fi
+  fi
 fi
 
 # ----------------------------------------------------------------- restart ---

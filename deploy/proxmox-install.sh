@@ -423,16 +423,35 @@ EOF"
   fi
 
   if inct "test -f /opt/kram/deploy/49-kram-update.rules"; then
-    # polkit only reads .rules from this directory, and only when it exists —
-    # on a minimal container polkit may not be installed at all, in which case
-    # the app falls back to reporting that it cannot apply updates.
+    # A fresh Debian container has no polkit, so this used to skip the rule and
+    # leave a working-looking install whose update button failed with "Access
+    # denied". Install polkit rather than shrugging.
+    if ! inct "test -d /etc/polkit-1/rules.d"; then
+      inct "DEBIAN_FRONTEND=noninteractive apt-get install -y polkitd >/dev/null 2>&1 \
+            || DEBIAN_FRONTEND=noninteractive apt-get install -y policykit-1 >/dev/null 2>&1 \
+            || true"
+    fi
+
     if inct "test -d /etc/polkit-1/rules.d"; then
       inct "cp /opt/kram/deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules"
       inct "systemctl restart polkit >/dev/null 2>&1 || true"
-      msg_ok "Update permission granted to the app"
+
+      # Ask polkit the same question the app will ask, as the same user. A rule
+      # that is present but not in effect is otherwise invisible until someone
+      # presses the button.
+      if inct "command -v pkcheck >/dev/null 2>&1 && runuser -u kram -- sh -c 'pkcheck \
+                 --action-id org.freedesktop.systemd1.manage-units \
+                 --detail unit kram-update.service \
+                 --detail verb start \
+                 --process \$\$' >/dev/null 2>&1"; then
+        msg_ok "Update permission granted to the app"
+      else
+        msg_warn "the polkit rule is installed but not granting permission."
+        msg_warn "Apply updates with: /opt/kram/deploy/update.sh"
+      fi
     else
-      msg_warn "polkit is not installed; the UI cannot trigger updates."
-      msg_warn "Apply them with: systemctl start kram-update"
+      msg_warn "polkit could not be installed; the UI cannot trigger updates."
+      msg_warn "Apply them with: /opt/kram/deploy/update.sh"
     fi
   fi
 

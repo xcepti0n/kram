@@ -774,3 +774,19 @@ optimistic value landed — a visible flicker, and enough to make Playwright's `
 **Cost.** The `.check()`/`.uncheck()` helpers are still wrong for a controlled input, because the
 DOM lags the cache by one commit regardless; the tests use `.click()` and assert on the rendered
 count, which is what a person actually reads.
+
+### DD-38 — Permission is checked with pkcheck, and polkit is installed rather than assumed
+**Decision.** `canApply()` asks polkit via `pkcheck`, not `systemctl start --dry-run`; both
+deploy scripts install polkit when it is absent and then verify the grant is in effect.
+**Why.** `--dry-run` validates the unit and plans the transaction — it does not run the polkit
+check, so it returns success for a user polkit will refuse. In production the dry-run passed, the
+button appeared, and pressing it returned `Access denied`. Separately, both scripts guarded the
+rule on `/etc/polkit-1/rules.d` already existing, which on a fresh Debian container it does not, so
+the rule was never installed and the skip was silent.
+**Why it survived review.** `canApply` had no tests at all, and on any developer machine it returns
+false for unrelated reasons, so nothing distinguished a correct implementation from this one. The
+guard against "a button that appears and then fails" was itself a check that could not fail — the
+third instance of that pattern in this project.
+**Cost.** `pkcheck` must be spawned with the subject process resolved *inside* `runuser`; passing
+the outer `$$` checks root and passes regardless. The tests inspect the source of `canApply`, which
+is blunt, but the alternative is a polkit-enabled container in CI.

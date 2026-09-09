@@ -37,6 +37,7 @@ interface Props {
   onToggleChecklistItem: (id: string, checked: boolean) => void;
   onRenameChecklistItem: (id: string, text: string) => void;
   onRemoveChecklistItem: (id: string) => void;
+  onReorderChecklistItem: (id: string, before_id: string | null, after_id: string | null) => void;
   onResetChecklist: () => void;
 }
 
@@ -60,6 +61,7 @@ export function TaskSheet({
   onToggleChecklistItem,
   onRenameChecklistItem,
   onRemoveChecklistItem,
+  onReorderChecklistItem,
   onResetChecklist,
 }: Props) {
   const [title, setTitle] = useState(task.title);
@@ -264,6 +266,7 @@ export function TaskSheet({
             onToggle={onToggleChecklistItem}
             onRename={onRenameChecklistItem}
             onRemove={onRemoveChecklistItem}
+            onReorder={onReorderChecklistItem}
             onReset={onResetChecklist}
           />
 

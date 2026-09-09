@@ -77,14 +77,51 @@
   display: grid;
   /* Named tracks and explicit placement, as in TaskRow (DD-32): without them a
      long item pushes the date and the remove button out of column. */
-  grid-template-columns: [check] auto [text] minmax(0, 1fr) [date] auto [remove] auto;
+  grid-template-columns:
+    [handle] auto [check] auto [text] minmax(0, 1fr) [date] auto [remove] auto;
   align-items: center;
   gap: var(--space-2);
   padding-block: var(--space-1);
 }
 
-.item:hover .remove {
+.item:hover .remove,
+.item:hover .handle {
   opacity: 1;
+}
+
+.item[data-dragging] {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  opacity: 0.9;
+}
+
+/* Revealed on hover like the remove button; the list reads as text until you
+   reach for it. Always visible on touch, where there is no hover. */
+.handle {
+  grid-column: handle;
+  display: grid;
+  place-items: center;
+  inline-size: 12px;
+  block-size: 22px;
+  padding: 0;
+  color: var(--text-faint);
+  background: none;
+  border: none;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+  transition: opacity var(--motion) var(--motion-ease);
+}
+
+.handle:active {
+  cursor: grabbing;
+}
+
+.handle:focus-visible {
+  opacity: 1;
+  outline: var(--border-weight) solid var(--accent);
+  border-radius: var(--radius-sm);
 }
 
 /* The touch target (DD-33), carried by the label rather than a pseudo-element
@@ -208,7 +245,8 @@
 }
 
 @media (hover: none) {
-  .remove {
+  .remove,
+  .handle {
     opacity: 1;
   }
 

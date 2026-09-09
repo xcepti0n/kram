@@ -24,6 +24,7 @@ import {
   usePages,
   usePlaces,
   useRepositionPage,
+  useMoveChecklistItem,
   useRepositionTask,
   useResetChecklist,
   useSettings,
@@ -109,6 +110,7 @@ export function App() {
   const addChecklistItem = useAddChecklistItem();
   const updateChecklistItem = useUpdateChecklistItem();
   const deleteChecklistItem = useDeleteChecklistItem();
+  const moveChecklistItem = useMoveChecklistItem();
   const resetChecklist = useResetChecklist();
 
   /* Theme attributes are mirrored to <html> and localStorage, so the pre-paint
@@ -375,6 +377,9 @@ export function App() {
           }
           onRemoveChecklistItem={(id) =>
             deleteChecklistItem.mutate({ id, taskId: selectedTask.data!.id })
+          }
+          onReorderChecklistItem={(id, before_id, after_id) =>
+            moveChecklistItem.mutate({ id, taskId: selectedTask.data!.id, before_id, after_id })
           }
           onResetChecklist={() => resetChecklist.mutate(selectedTask.data!.id)}
           onClose={() => setSelectedTaskId(null)}

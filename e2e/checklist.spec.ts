@@ -186,6 +186,60 @@ test.describe('checklist', () => {
   });
 });
 
+test.describe('checklist ordering', () => {
+  test('drags an item to a new position and persists it', async ({ page, request, seeded }) => {
+    const task = await createTask(request, { title: 'Car service', page_id: seeded.pageId });
+    for (const text of ['Oil change', 'Brake pads', 'Air filter']) {
+      await request.post(`/api/tasks/${task.id}/checklist`, { data: { text } });
+    }
+
+    await page.goto(`/p/${seeded.pageId}`);
+    await ready(page);
+    await openTask(page, 'Car service');
+
+    const handle = page.getByTestId('checklist-handle-Air filter');
+    const target = page.getByRole('checkbox', { name: 'Oil change' });
+
+    /* Measure before pressing: sampling after mouse.down() reads a layout
+       dnd-kit is already transforming, which is what made the task reorder
+       test flaky. */
+    await expect(page.locator('[data-testid^="checklist-handle-"]')).toHaveCount(3);
+    const box = (await target.boundingBox())!;
+
+    await handle.hover();
+    await page.mouse.down();
+    // Several small moves: dnd-kit needs movement to register a drag.
+    await page.mouse.move(box.x, box.y + box.height / 2, { steps: 12 });
+    await page.mouse.move(box.x, box.y - 4, { steps: 6 });
+    await page.mouse.up();
+
+    await expect
+      .poll(async () => {
+        const fetched = await (await page.request.get(`/api/tasks/${task.id}`)).json();
+        return fetched.checklist.map((i: any) => i.text);
+      })
+      .toEqual(['Air filter', 'Oil change', 'Brake pads']);
+  });
+
+  /* Reordering is presentation, not history: it must not claim anything
+     happened that day. */
+  test('does not write a history entry', async ({ page, request, seeded }) => {
+    const task = await createTask(request, { title: 'Car service', page_id: seeded.pageId });
+    const first = await (
+      await request.post(`/api/tasks/${task.id}/checklist`, { data: { text: 'Oil change' } })
+    ).json();
+    await request.post(`/api/tasks/${task.id}/checklist`, { data: { text: 'Brake pads' } });
+
+    const before = await (await request.get(`/api/tasks/${task.id}`)).json();
+    await request.patch(`/api/checklist/${first.item.id}/position`, {
+      data: { before_id: null, after_id: null },
+    });
+    const after = await (await request.get(`/api/tasks/${task.id}`)).json();
+
+    expect(after.updates.map((u: any) => u.body)).toEqual(before.updates.map((u: any) => u.body));
+  });
+});
+
 test.describe('checklist on the task row', () => {
   test('shows progress without opening the task', async ({ page, request, seeded }) => {
     const task = await createTask(request, { title: 'Buy groceries', page_id: seeded.pageId });

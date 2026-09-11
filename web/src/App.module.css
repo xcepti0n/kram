@@ -110,6 +110,8 @@
   border-radius: var(--radius-sm);
   background: var(--surface);
   font-family: var(--font-mono);
+  /* em, not a token: monospace renders optically larger at the same point
+     size, so this shrinks relative to the prose it sits in. */
   font-size: 0.9em;
 }
 

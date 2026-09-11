@@ -128,16 +128,37 @@
    on the input: an absolutely-positioned ::after over a bare checkbox
    intercepts the click instead of enlarging it, so the box never toggles.
    A label forwards clicks to its control, which is exactly what is wanted. */
+/* The label occupies exactly its grid track; the reach is added by a
+   pseudo-element instead of by negative margins.
+ *
+ * Padding plus a negative margin made the label's box 44px wide inside a 15px
+ * track, so it bled into its neighbours — once a drag handle was added on the
+ * left, the text button on the right ended up on top of the checkbox and
+ * swallowed every click. A ::after on the *label* enlarges the hit area
+ * without changing layout, and a label forwards clicks to its control, which
+ * is why this works here where the same trick on the input did not. */
 .checkboxTarget {
+  position: relative;
   grid-column: check;
   display: grid;
   place-items: center;
-  /* 15px control, 44px reach. */
   inline-size: 15px;
   block-size: 15px;
-  margin: -14.5px;
-  padding: 14.5px;
   cursor: pointer;
+}
+
+/* 15px control, 44px tall and reaching right into the gap before the text.
+ *
+ * Asymmetric on purpose: a symmetric inset reaches back over the drag handle
+ * and swallows it, which is the same collision the negative margins caused.
+ * Vertical reach is the one that matters for a thumb on a list, and the row
+ * is ~29px tall, so ±14.5px covers the full 44px there. */
+.checkboxTarget::after {
+  content: '';
+  position: absolute;
+  inset-block: -14.5px;
+  inset-inline-start: -2px;
+  inset-inline-end: -14.5px;
 }
 
 .checkbox {
@@ -256,8 +277,8 @@
     padding-block: 6px;
   }
 
-  .checkboxTarget {
-    margin: -12px;
-    padding: 12px;
+  .checkboxTarget::after {
+    inset-block: -12px;
+    inset-inline-end: -12px;
   }
 }

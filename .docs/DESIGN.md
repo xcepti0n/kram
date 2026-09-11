@@ -790,3 +790,37 @@ third instance of that pattern in this project.
 **Cost.** `pkcheck` must be spawned with the subject process resolved *inside* `runuser`; passing
 the outer `$$` checks root and passes regardless. The tests inspect the source of `canApply`, which
 is blunt, but the alternative is a polkit-enabled container in CI.
+
+### DD-39 — The type scale is two ratios, not five eyeballed multipliers
+**Decision.** Font sizes derive from the base by a uniform ratio: 1.125 below it (xs, sm) and 1.25
+above (lg, xl). `--font-size-2xl` is gone; nothing used it.
+**Why.** The multipliers were 0.79, 0.87, 1.2, 1.55, 2.1 — step ratios of 1.10, 1.15, 1.20, 1.29,
+1.36. Monotonically climbing, so not a scale at all: the small end was cramped (11.46px and 12.62px
+are hard to tell apart at a glance) while the top sprawled to 30px. One uniform ratio cannot serve
+both ends — 1.2 throughout drops xs to 10px, too small for the row metadata that uses it — so the
+usual resolution is a tighter step for UI text and a wider one for display sizes. xs lands within
+0.01px of where it already was, so the dense metadata is unaffected.
+**Why ratios and not fixed pixels.** Density multiplies the base, and the whole set has to scale
+with it. A test asserts the ratios hold under compact density for exactly this reason.
+**Deliberate exceptions.** `<code>` inside prose sizes in `em`, because monospace reads optically
+larger than the body face at the same point size, and the SVG labels in the timeline are fixed px
+because the shapes drawn around them do not scale. Both are commented as such.
+**Cost.** Custom properties resolve lazily, so a test cannot read the scale off `:root` —
+`getPropertyValue` returns the literal `calc(...)`. The tokens have to be applied to an element and
+read back as computed `fontSize`.
+
+### DD-40 — A touch target must not be built from negative margins
+**Decision.** The checklist checkbox's 44px reach comes from an `::after` on its `<label>`, inset
+asymmetrically: full vertically and to the right, ~0 to the left.
+**Why.** Three arrangements failed first. An `::after` on the bare `<input>` intercepted the clicks
+it was meant to enlarge (a label forwards clicks to its control; an overlay does not). Padding plus
+a negative margin made the label's box 44px wide inside a 15px grid track, so it bled into its
+neighbours — once a drag handle was added, the text button ended up over the checkbox and swallowed
+every click. A symmetric `::after` then reached back over the handle and swallowed that instead.
+**Why asymmetric is the right answer.** Vertical reach is what a thumb needs on a list; horizontal
+reach into a neighbouring control is what breaks it. The row is ~29px tall, so ±14.5px gives the
+full 44px where it counts.
+**Cost.** The label covers the input, so Playwright refuses to click the input directly — the tests
+click the label, which is what a real pointer lands on anyway. A test now pins the reach *and*
+asserts the handle and text remain the hit-test winners at their own centres; both regressions
+above pass every visual check and fail only on click.

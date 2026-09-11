@@ -27,6 +27,17 @@ async function openTask(page: Page, title: string) {
   );
 }
 
+/**
+ * Tick or untick an item.
+ *
+ * Clicks the label, not the input: the label carries the 44px hit area and so
+ * covers the control, which is exactly what a real pointer lands on. Clicking
+ * the input directly is refused as intercepted.
+ */
+function box(page: Page, text: string) {
+  return page.locator('label', { has: page.getByRole('checkbox', { name: text }) });
+}
+
 async function addItems(page: Page, ...texts: string[]) {
   const input = page.getByTestId('checklist-add');
   for (const text of texts) {
@@ -61,7 +72,7 @@ test.describe('checklist', () => {
     await openTask(page, 'Buy groceries');
     await addItems(page, 'Milk', 'Eggs');
 
-    await page.getByRole('checkbox', { name: 'Milk' }).click();
+    await box(page, 'Milk').click();
 
     await expect(page.getByTestId('checklist-count')).toHaveText('1/2');
     // The item carries its own date — the answer to "when did I buy this".
@@ -79,10 +90,9 @@ test.describe('checklist', () => {
     /* .click() rather than .check(): the checkbox is controlled, so its DOM
        state lags the cache by a paint, and .check()'s built-in retry clicks it
        a second time and toggles it back. The count is the real assertion. */
-    const box = page.getByRole('checkbox', { name: 'Milk' });
-    await box.click();
+    await box(page, 'Milk').click();
     await expect(page.getByTestId('checklist-count')).toHaveText('1/1');
-    await box.click();
+    await box(page, 'Milk').click();
     await expect(page.getByTestId('checklist-count')).toHaveText('0/1');
   });
 
@@ -100,7 +110,7 @@ test.describe('checklist', () => {
     await addItems(page, 'Milk', 'Eggs', 'Bread');
 
     for (const name of ['Milk', 'Eggs', 'Bread']) {
-      await page.getByRole('checkbox', { name }).click();
+      await box(page, name).click();
     }
 
     const dialog = page.getByRole('dialog');
@@ -144,7 +154,7 @@ test.describe('checklist', () => {
     await ready(page);
     await openTask(page, 'Buy groceries');
     await addItems(page, 'Milk', 'Eggs');
-    await page.getByRole('checkbox', { name: 'Milk' }).click();
+    await box(page, 'Milk').click();
 
     // Two-step, so a stray click does not wipe the list.
     await page.getByTestId('checklist-reset').click();
@@ -186,6 +196,51 @@ test.describe('checklist', () => {
   });
 });
 
+test.describe('checklist touch targets', () => {
+  /* Broken twice by layout changes: first the negative margins that made the
+     label overlap its neighbours, then a symmetric ::after that swallowed the
+     drag handle. Nothing caught either, because both looked right and only
+     failed on click. */
+  test('gives the checkbox a 44px reach without covering its neighbours', async ({
+    page,
+    request,
+    seeded,
+  }) => {
+    const task = await createTask(request, { title: 'Car service', page_id: seeded.pageId });
+    await request.post(`/api/tasks/${task.id}/checklist`, { data: { text: 'Oil change' } });
+
+    await page.goto(`/p/${seeded.pageId}`);
+    await ready(page);
+    await openTask(page, 'Car service');
+
+    const reach = await page.evaluate(() => {
+      const cb = document.querySelector('input[type=checkbox][aria-label="Oil change"]')!;
+      const label = cb.closest('label')!;
+      const after = getComputedStyle(label, '::after');
+      const r = label.getBoundingClientRect();
+      return {
+        height: r.height + parseFloat(after.insetBlockStart) * -2,
+        // What sits at the centre of the handle and of the text: neither may
+        // be the checkbox label.
+        handleIsClickable: (() => {
+          const h = document.querySelector('[data-testid="checklist-handle-Oil change"]')!;
+          const hr = h.getBoundingClientRect();
+          return document.elementFromPoint(hr.x + hr.width / 2, hr.y + hr.height / 2)?.closest('button') === h;
+        })(),
+        textIsClickable: (() => {
+          const t = [...document.querySelectorAll('button')].find((b) => b.textContent === 'Oil change')!;
+          const tr = t.getBoundingClientRect();
+          return document.elementFromPoint(tr.x + tr.width / 2, tr.y + tr.height / 2) === t;
+        })(),
+      };
+    });
+
+    expect(reach.height, 'checkbox reach should be at least 44px tall').toBeGreaterThanOrEqual(44);
+    expect(reach.handleIsClickable, 'the drag handle must not be covered').toBe(true);
+    expect(reach.textIsClickable, 'the item text must not be covered').toBe(true);
+  });
+});
+
 test.describe('checklist ordering', () => {
   test('drags an item to a new position and persists it', async ({ page, request, seeded }) => {
     const task = await createTask(request, { title: 'Car service', page_id: seeded.pageId });
@@ -198,19 +253,21 @@ test.describe('checklist ordering', () => {
     await openTask(page, 'Car service');
 
     const handle = page.getByTestId('checklist-handle-Air filter');
-    const target = page.getByRole('checkbox', { name: 'Oil change' });
+    // Target the row, not the checkbox: the drop point should be the middle of
+    // the item being displaced, and the checkbox is a 15px box at its edge.
+    const target = page.locator('li', { has: page.getByRole('checkbox', { name: 'Oil change' }) });
 
     /* Measure before pressing: sampling after mouse.down() reads a layout
        dnd-kit is already transforming, which is what made the task reorder
        test flaky. */
     await expect(page.locator('[data-testid^="checklist-handle-"]')).toHaveCount(3);
-    const box = (await target.boundingBox())!;
+    const rect = (await target.boundingBox())!;
 
     await handle.hover();
     await page.mouse.down();
     // Several small moves: dnd-kit needs movement to register a drag.
-    await page.mouse.move(box.x, box.y + box.height / 2, { steps: 12 });
-    await page.mouse.move(box.x, box.y - 4, { steps: 6 });
+    await page.mouse.move(rect.x + rect.width / 2, rect.y + rect.height / 2, { steps: 12 });
+    await page.mouse.move(rect.x + rect.width / 2, rect.y + 2, { steps: 6 });
     await page.mouse.up();
 
     await expect

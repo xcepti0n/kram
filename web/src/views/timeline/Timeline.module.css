@@ -125,6 +125,9 @@
   fill: var(--accent);
 }
 
+/* Fixed px, deliberately outside the type scale: this sits inside an SVG flag
+   of fixed geometry, so scaling the text with density would overflow the
+   shape drawn around it. Same for .clusterCount below. */
 .todayFlagText {
   fill: var(--text-on-accent);
   font-size: 9px;
@@ -269,7 +272,7 @@
 .clusterCount {
   fill: var(--surface);
   font-size: 9px;
-  font-weight: 700;
+  font-weight: var(--font-weight-display);
   text-anchor: middle;
   pointer-events: none;
 }

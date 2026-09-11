@@ -75,11 +75,24 @@
   --space-6: calc(var(--space-unit) * 4);
   --space-8: calc(var(--space-unit) * 6);
 
-  --font-size-sm: calc(var(--font-size-base) * 0.87);
-  --font-size-xs: calc(var(--font-size-base) * 0.79);
-  --font-size-lg: calc(var(--font-size-base) * 1.2);
-  --font-size-xl: calc(var(--font-size-base) * 1.55);
-  --font-size-2xl: calc(var(--font-size-base) * 2.1);
+  /* Two-part modular scale (DD-39): 1.125 below the base, 1.25 above.
+   *
+   * The multipliers used to be picked by eye — 0.79, 0.87, 1.2, 1.55, 2.1 —
+   * whose step ratios climbed 1.10, 1.15, 1.20, 1.29, 1.36. Not a scale, so
+   * the small end was cramped (11.46 and 12.62 are hard to tell apart) while
+   * the top sprawled. One uniform ratio cannot serve both ends: 1.2 throughout
+   * would drop xs to 10px, too small for the row metadata that uses it. A
+   * tighter step for UI text and a wider one for display sizes is the usual
+   * resolution, and it leaves xs where it already was.
+   *
+   * Ratios rather than fixed pixels, so density keeps scaling the whole set.
+   *
+   * There is no 2xl: it was defined and used by nothing. The app's largest
+   * text is the view title at xl. */
+  --font-size-xs: calc(var(--font-size-base) / 1.125 / 1.125);
+  --font-size-sm: calc(var(--font-size-base) / 1.125);
+  --font-size-lg: calc(var(--font-size-base) * 1.25);
+  --font-size-xl: calc(var(--font-size-base) * 1.5625);
 }
 
 /* ================================================================== CALM === */

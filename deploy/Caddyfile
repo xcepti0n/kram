@@ -20,8 +20,57 @@
 # The default is journald, which is where the rest of this stack already logs:
 #   journalctl -u caddy -f
 
+# Plain HTTP, for one purpose: handing out the CA root (DD-41).
+#
+# This has to be HTTP. Fetching the root over HTTPS is circular — the browser
+# would have to trust the certificate you are downloading in order to download
+# it, which is the warning you are trying to remove in the first place.
+#
+# Serving a public CA root over HTTP is not a leak: it is a public key, it is
+# presented to every client during every handshake already, and it authorises
+# nothing on its own. What matters is that the file cannot be tampered with in
+# transit — on a LAN you control, between your device and this container, that
+# is the same trust boundary the rest of this setup already assumes. Verify the
+# fingerprint after installing if you want certainty; the installer prints it.
+#
+# Everything else on :80 redirects to HTTPS, which is Caddy's default behaviour
+# and worth keeping explicit here so the exception above is visible.
+http://{$KRAM_DOMAIN} {
+	handle /kram-root.crt {
+		root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
+		rewrite * /root.crt
+		# Content-Disposition so iOS offers to install it rather than rendering
+		# it as text. The DER/PEM distinction matters to some clients; Caddy
+		# writes PEM, which iOS, macOS and Android all accept.
+		header Content-Type application/x-x509-ca-cert
+		header Content-Disposition "attachment; filename=kram-root.crt"
+		file_server
+	}
+
+	handle {
+		redir https://{host}{uri} permanent
+	}
+}
+
 https://{$KRAM_DOMAIN} {
-	tls internal
+	# 30 days, not Caddy's 12-hour default (DD-41).
+	#
+	# Short public certificates exist because revocation does not work: a stolen
+	# key stays useful until the cert expires. That reasoning does not reach a
+	# LAN-only host whose private key never leaves the container — anyone who
+	# can steal it already has root, and could simply ask this CA for another.
+	#
+	# What the default does cost here is real: if the container is off for a
+	# day, the leaf is expired at boot and connections fail until Caddy
+	# reissues. 30 days removes that window while still exercising renewal
+	# often enough that a broken CA shows up in days, not years.
+	#
+	# The CA ROOT is unaffected and stays at Caddy's 10-year default. That is
+	# the one trusted on each device, and shortening it would mean re-trusting
+	# every phone and laptop on a schedule.
+	tls internal {
+		lifetime 720h
+	}
 
 	encode zstd gzip
 

@@ -181,6 +181,42 @@ if [[ -f deploy/49-kram-update.rules ]]; then
   fi
 fi
 
+# The Caddyfile lives in /etc, so a pull never updates it — the same trap as
+# the systemd unit above. Only touch it if Caddy is actually in use, and
+# substitute the same variables caddy-install.sh does, or the placeholders
+# would be written literally and Caddy would fail to start.
+if systemctl is-enabled caddy >/dev/null 2>&1 && [[ -f deploy/Caddyfile ]]; then
+  CADDY_FILE="/etc/caddy/Caddyfile"
+  # Recover the domain and port from the running config rather than guessing:
+  # they were chosen at install time and are not recorded anywhere else.
+  CADDY_DOMAIN="$(sed -n 's|^https://\([^ ]*\) {.*|\1|p' "$CADDY_FILE" 2>/dev/null | head -1)"
+
+  if [[ -n "$CADDY_DOMAIN" ]]; then
+    NEW_CADDY="$(mktemp)"
+    sed -e "s|{\$KRAM_DOMAIN}|${CADDY_DOMAIN}|g" \
+        -e "s|{\$KRAM_PORT}|${PORT}|g" deploy/Caddyfile > "$NEW_CADDY"
+
+    if ! cmp -s "$NEW_CADDY" "$CADDY_FILE"; then
+      # Validate before installing: a bad Caddyfile takes HTTPS down entirely,
+      # and the old one is still serving until this succeeds.
+      if caddy validate --config "$NEW_CADDY" --adapter caddyfile >/dev/null 2>&1; then
+        cp "$NEW_CADDY" "$CADDY_FILE"
+        if systemctl reload caddy >/dev/null 2>&1; then
+          msg_ok "Caddy config updated"
+        else
+          msg_warn "Caddy reload failed; check: journalctl -u caddy -n 20"
+        fi
+      else
+        msg_warn "the new Caddyfile did not validate; keeping the existing one."
+        caddy validate --config "$NEW_CADDY" --adapter caddyfile 2>&1 | sed 's/^/    /' | head -10
+      fi
+    fi
+    rm -f "$NEW_CADDY"
+  else
+    msg_warn "could not read the domain from ${CADDY_FILE}; left it unchanged."
+  fi
+fi
+
 # ----------------------------------------------------------------- restart ---
 msg_info "Restarting…"
 systemctl reset-failed kram 2>/dev/null || true

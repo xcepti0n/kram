@@ -113,15 +113,55 @@ ROOT_CRT="/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt"
 echo
 msg_ok "Done — https://${DOMAIN}"
 echo
+
+# Verify the download route actually works before telling the user to use it.
+# A 200 with PEM content is the assertion; anything else means the file_server
+# cannot read the PKI directory and the instructions below would be a lie.
+CERT_URL="http://${DOMAIN}/kram-root.crt"
+if curl -sf --resolve "${DOMAIN}:80:127.0.0.1" "$CERT_URL" 2>/dev/null \
+     | grep -q "BEGIN CERTIFICATE"; then
+  msg_ok "CA root is downloadable at ${CERT_URL}"
+  CERT_SERVED=1
+else
+  msg_warn "the CA root is NOT being served over HTTP."
+  journalctl -u caddy -n 10 --no-pager 2>&1 | sed 's/^/    /'
+  CERT_SERVED=0
+fi
+
+echo
 msg_warn "One step left: trust the CA root on each device you browse from."
-echo "  Copy it off the container, from the Proxmox host:"
 echo
-echo "    pct pull <CTID> ${ROOT_CRT} kram-root.crt"
-echo
-echo "  macOS:  sudo security add-trusted-cert -d -r trustRoot \\"
-echo "            -k /Library/Keychains/System.keychain kram-root.crt"
-echo "  iOS:    AirDrop it, install the profile, then ALSO enable it under"
-echo "          Settings > General > About > Certificate Trust Settings"
-echo "  Android: Settings > Security > Encryption & credentials > Install a certificate > CA"
-echo
-echo "  Until then browsers warn — the connection is encrypted regardless."
+
+if [[ "$CERT_SERVED" -eq 1 ]]; then
+  echo "  On the device itself, open:"
+  echo
+  echo "      ${CERT_URL}"
+  echo
+  echo "  iOS     Safari downloads a profile. Then Settings > Profile Downloaded"
+  echo "          > Install, and ALSO turn it on under"
+  echo "          Settings > General > About > Certificate Trust Settings."
+  echo "          That second step is required and easy to miss."
+  echo "  Android Downloads, then Settings > Security > Encryption & credentials"
+  echo "          > Install a certificate > CA certificate."
+  echo "  macOS   Download, open Keychain Access > System, drag it in, then set"
+  echo "          it to \"Always Trust\". Or:"
+  echo "            sudo security add-trusted-cert -d -r trustRoot \\"
+  echo "              -k /Library/Keychains/System.keychain ~/Downloads/kram-root.crt"
+  echo
+else
+  echo "  Copy it off the container, from the Proxmox host:"
+  echo
+  echo "      pct pull <CTID> ${ROOT_CRT} kram-root.crt"
+  echo
+fi
+
+# The fingerprint is what makes the HTTP download safe to trust: compare it
+# against what the device shows before enabling the profile.
+if FINGERPRINT="$(openssl x509 -in "$ROOT_CRT" -noout -fingerprint -sha256 2>/dev/null)"; then
+  echo "  Verify before trusting — this CA root's SHA-256 fingerprint is:"
+  echo "      ${FINGERPRINT#*=}"
+  echo
+fi
+
+echo "  Until a device trusts it, browsers warn. The connection is encrypted"
+echo "  either way; the warning is about identity, not secrecy."

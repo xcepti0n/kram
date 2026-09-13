@@ -824,3 +824,27 @@ full 44px where it counts.
 click the label, which is what a real pointer lands on anyway. A test now pins the reach *and*
 asserts the handle and text remain the hit-test winners at their own centres; both regressions
 above pass every visual check and fail only on click.
+
+### DD-41 — A 30-day leaf, a 10-year root, and the root served over plain HTTP
+**Decision.** `tls internal { lifetime 720h }`, and the CA root is downloadable at
+`http://<domain>/kram-root.crt`.
+**Why not Caddy's 12-hour default.** Short public certificates exist because revocation does not
+work: CRLs and OCSP soft-fail, so a stolen key stays useful until the cert expires. That reasoning
+does not reach a host whose private key never leaves the container — anyone able to steal it already
+has root and could ask this CA for a fresh one. Meanwhile the default has a real cost here: if the
+container is off for a day, the leaf is expired at boot and connections fail until Caddy reissues.
+30 days removes that window while still exercising renewal often enough that a broken CA surfaces in
+days rather than years. Public sites are at 90 days and heading toward 47; nobody serves 12 hours.
+**Why the root stays at 10 years.** It is what each device trusts. Shortening it would mean
+re-installing a profile on every phone and laptop on a schedule — friction with no benefit, since
+the root's key is no more exposed than the leaf's.
+**Why the download is HTTP.** Fetching the root over HTTPS is circular: the browser would have to
+trust the certificate being downloaded in order to download it. A CA root is a public key, already
+presented in every handshake, and authorises nothing by itself; what matters is tamper-resistance in
+transit, which on a LAN between the device and the container is the same boundary this setup already
+assumes. The installer prints the SHA-256 fingerprint so it can be checked against what the device
+shows before the profile is enabled.
+**Cost.** `/etc/caddy/Caddyfile` is outside the checkout, so a pull never updates it — the same trap
+as the systemd unit (DD-30). `update.sh` now re-renders it from `deploy/Caddyfile`, substituting the
+domain recovered from the running config, and validates before installing so a bad file cannot take
+HTTPS down.

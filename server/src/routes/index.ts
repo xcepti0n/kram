@@ -22,6 +22,8 @@ import {
   updateTaskInput,
   type SortMode,
 } from '@kram/shared';
+import { createHash } from 'node:crypto';
+import { readFile } from 'node:fs/promises';
 import { z } from 'zod';
 import type { DB } from '../db/index.js';
 import * as repo from '../repositories/index.js';
@@ -62,6 +64,69 @@ export async function registerRoutes(app: FastifyInstance, ctx: RouteContext): P
   const { db, userId } = ctx;
 
   app.get('/api/health', async () => ({ status: 'ok' }));
+
+  /* --------------------------------------------------------------- ca --- */
+
+  /*
+   * Hand out the CA root so a device can trust this host (DD-41).
+   *
+   * Served by the app, over HTTPS, rather than relying on the plain-HTTP route
+   * in the Caddyfile: that route is easy to miss (a browser or HSTS quietly
+   * upgrades the URL to https and the request falls through to the SPA), and a
+   * button in Settings is a better answer than a URL typed on a phone.
+   *
+   * There is no bootstrapping problem here. Downloading over an untrusted
+   * certificate still works — the browser warns, the bytes arrive intact — and
+   * the certificate is a public key that authorises nothing on its own. The
+   * fingerprint shown beside the button is what makes it verifiable.
+   *
+   * Reads the copy caddy-install.sh publishes; Caddy's own PKI directory is
+   * mode 700 and holds the private key, so this process cannot read it and
+   * should not be able to.
+   */
+  const CA_ROOT_PATH = process.env.CA_ROOT_PATH ?? '/var/lib/kram-ca/kram-root.crt';
+
+  app.get('/api/ca-root', async (_request, reply) => {
+    let pem: string;
+    try {
+      pem = await readFile(CA_ROOT_PATH, 'utf8');
+    } catch {
+      return reply.code(404).send({
+        error: 'no CA root is published on this host',
+      });
+    }
+
+    if (!pem.includes('BEGIN CERTIFICATE')) {
+      return reply.code(500).send({ error: 'the published CA root is not a certificate' });
+    }
+
+    return reply
+      .header('content-type', 'application/x-x509-ca-cert')
+      .header('content-disposition', 'attachment; filename="kram-root.crt"')
+      .send(pem);
+  });
+
+  /* Whether to offer the download at all, and the fingerprint to check it
+     against. Separate from the file so the UI can decide without downloading
+     a certificate it may not show. */
+  app.get('/api/ca-root/info', async () => {
+    try {
+      const pem = await readFile(CA_ROOT_PATH, 'utf8');
+      const der = Buffer.from(
+        pem.replace(/-----(BEGIN|END) CERTIFICATE-----/g, '').replace(/\s+/g, ''),
+        'base64',
+      );
+      // SHA-256 over the DER bytes is what every OS shows as "the"
+      // fingerprint, so it can be compared against the phone's own display.
+      const digest = createHash('sha256').update(der).digest('hex').toUpperCase();
+      return {
+        available: true,
+        fingerprint: digest.match(/.{2}/g)?.join(':') ?? digest,
+      };
+    } catch {
+      return { available: false, fingerprint: null };
+    }
+  });
 
   /* ----------------------------------------------------------- updates --- */
 

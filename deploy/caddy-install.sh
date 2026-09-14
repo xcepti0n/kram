@@ -110,6 +110,29 @@ msg_ok "HTTPS is serving"
 
 ROOT_CRT="/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt"
 
+# Publish a copy of the CA root somewhere readable.
+#
+# Two reasons not to serve it from Caddy's PKI directory. That directory is
+# mode 700 and holds root.key beside root.crt, so nothing but Caddy can read it
+# — the app, running as `kram`, certainly cannot. And pointing a file server at
+# a directory containing a private key relies entirely on the rewrite rule
+# being airtight, which is a thin thing to rest on.
+#
+# Copying out only the public certificate removes both problems: the key is
+# never in scope, and any process can read what is already sent in every TLS
+# handshake.
+PUBLIC_CRT_DIR="/var/lib/kram-ca"
+PUBLIC_CRT="${PUBLIC_CRT_DIR}/kram-root.crt"
+
+if [[ -f "$ROOT_CRT" ]]; then
+  mkdir -p "$PUBLIC_CRT_DIR"
+  install -m 644 "$ROOT_CRT" "$PUBLIC_CRT"
+  chmod 755 "$PUBLIC_CRT_DIR"
+  msg_ok "CA root published to ${PUBLIC_CRT}"
+else
+  msg_warn "no CA root at ${ROOT_CRT} yet; it appears on first HTTPS request."
+fi
+
 echo
 msg_ok "Done — https://${DOMAIN}"
 echo

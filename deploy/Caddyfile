@@ -37,8 +37,13 @@
 # and worth keeping explicit here so the exception above is visible.
 http://{$KRAM_DOMAIN} {
 	handle /kram-root.crt {
-		root * /var/lib/caddy/.local/share/caddy/pki/authorities/local
-		rewrite * /root.crt
+		# Served from a published copy, not from Caddy's PKI directory: that
+		# one is mode 700 and holds root.key beside root.crt, and pointing a
+		# file server at a directory containing a private key rests entirely on
+		# the rewrite below being airtight. caddy-install.sh copies the public
+		# certificate here, where the key is never in scope.
+		root * /var/lib/kram-ca
+		rewrite * /kram-root.crt
 		# Content-Disposition so iOS offers to install it rather than rendering
 		# it as text. The DER/PEM distinction matters to some clients; Caddy
 		# writes PEM, which iOS, macOS and Android all accept.

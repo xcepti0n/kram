@@ -1,0 +1,102 @@
+/* Matches the rhythm of Settings' own sections, since it renders inside them. */
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.heading {
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--text);
+}
+
+.description {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: 1.55;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--text);
+  transition:
+    background var(--motion) var(--motion-ease),
+    border-color var(--motion) var(--motion-ease);
+}
+
+.button:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-strong);
+  text-decoration: none;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding-inline-start: var(--space-4);
+  max-width: 62ch;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+.steps strong {
+  color: var(--text);
+  font-weight: var(--font-weight-medium);
+}
+
+.fingerprint {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  background: var(--surface-sunken);
+  border: var(--border-weight) solid var(--border);
+  border-radius: var(--radius);
+}
+
+.fingerprintLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-wide);
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Wraps rather than scrolls: the point is to compare it against a phone
+   screen, which means every byte has to be visible at once. */
+.fingerprintValue {
+  font-family: var(--font-mono);
+  /* em, not a token: monospace reads optically larger than the body face. */
+  font-size: 0.88em;
+  color: var(--text);
+  overflow-wrap: anywhere;
+  line-height: 1.5;
+}
+
+.fingerprintNote {
+  font-size: var(--font-size-xs);
+  color: var(--text-faint);
+  max-width: 52ch;
+  line-height: 1.5;
+}

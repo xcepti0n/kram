@@ -322,3 +322,23 @@ describe('backup and restore', () => {
     expect(restored.body.checklist_items).toBe(0);
   });
 });
+
+/**
+ * The CA root download (DD-41).
+ *
+ * The point of the endpoint is that a phone can trust this host without a
+ * terminal. The failure that matters is silent: if the file is missing the UI
+ * must not offer a button that downloads nothing.
+ */
+describe('the CA root', () => {
+  it('reports unavailable when no certificate is published', async () => {
+    // The default path does not exist in a test environment.
+    const info = (await call('GET', '/api/ca-root/info')).body;
+    expect(info.available).toBe(false);
+    expect(info.fingerprint).toBeNull();
+  });
+
+  it('404s the download when there is nothing to download', async () => {
+    expect((await call('GET', '/api/ca-root')).status).toBe(404);
+  });
+});

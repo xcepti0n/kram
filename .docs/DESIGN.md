@@ -848,3 +848,23 @@ shows before the profile is enabled.
 as the systemd unit (DD-30). `update.sh` now re-renders it from `deploy/Caddyfile`, substituting the
 domain recovered from the running config, and validates before installing so a bad file cannot take
 HTTPS down.
+
+### DD-42 — The CA root is offered by the app, not only by a URL
+**Decision.** `GET /api/ca-root` serves the certificate as an attachment and `/api/ca-root/info`
+reports whether one exists plus its SHA-256 fingerprint. Settings renders a download button, and
+renders nothing when no certificate is published.
+**Why.** The plain-HTTP route in the Caddyfile works but is easy to miss: a browser or HSTS quietly
+upgrades the URL to https, the request falls through to the SPA fallback, and the user gets the home
+page instead of a certificate — which is exactly what happened. A button on the device already
+looking at the page is a better answer than a URL typed on a phone.
+**Why serving it over HTTPS is fine.** There is no bootstrapping problem: downloading over an
+untrusted certificate still works, the browser just warns. The certificate is a public key that
+authorises nothing on its own, and the fingerprint beside the button is what makes it verifiable
+against what the device displays.
+**Why a published copy.** Caddy's PKI directory is mode 700 and holds `root.key` beside `root.crt`,
+so the app cannot read it and should not be able to. `caddy-install.sh` and `update.sh` copy the
+public certificate to `/var/lib/kram-ca/`, which also removes the private key from the file server's
+scope — the Caddyfile route now serves from there too, rather than relying solely on a rewrite rule
+to keep the key unreachable.
+**Cost.** The e2e server generates a throwaway certificate so the panel's visible path is tested;
+without it the endpoint 404s and the panel hides, leaving the button uncovered.

@@ -217,6 +217,21 @@ if systemctl is-enabled caddy >/dev/null 2>&1 && [[ -f deploy/Caddyfile ]]; then
   fi
 fi
 
+# Publish the CA root where the app can read it. Caddy's PKI directory is mode
+# 700 and holds the private key, so the app (running as an unprivileged user)
+# cannot read it and should not be able to — this copies out only the public
+# certificate. Also the path by which an existing install gains the download
+# button.
+CADDY_ROOT_CRT="/var/lib/caddy/.local/share/caddy/pki/authorities/local/root.crt"
+if [[ -f "$CADDY_ROOT_CRT" ]]; then
+  mkdir -p /var/lib/kram-ca
+  chmod 755 /var/lib/kram-ca
+  if ! cmp -s "$CADDY_ROOT_CRT" /var/lib/kram-ca/kram-root.crt; then
+    install -m 644 "$CADDY_ROOT_CRT" /var/lib/kram-ca/kram-root.crt
+    msg_ok "CA root published for download"
+  fi
+fi
+
 # ----------------------------------------------------------------- restart ---
 msg_info "Restarting…"
 systemctl reset-failed kram 2>/dev/null || true

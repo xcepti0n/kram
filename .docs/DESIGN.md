@@ -826,8 +826,14 @@ asserts the handle and text remain the hit-test winners at their own centres; bo
 above pass every visual check and fail only on click.
 
 ### DD-41 — A 30-day leaf, a 10-year root, and the root served over plain HTTP
-**Decision.** `tls internal { lifetime 720h }`, and the CA root is downloadable at
-`http://<domain>/kram-root.crt`.
+**Decision.** A 720h leaf via `tls { issuer internal { lifetime 720h } }`, `intermediate_lifetime
+8640h` in the global `pki` block, and the CA root downloadable from the app (DD-42).
+**Syntax that does not work.** `tls internal { lifetime ... }` is rejected — "unknown subdirective:
+lifetime". `lifetime` belongs to the *issuer*, so the `tls` directive has to be opened up and
+`issuer internal` named explicitly. Caddy also requires the leaf to be shorter than the intermediate
+that signs it, and the default intermediate is 7 days, so a 30-day leaf needs the global `pki` block
+raised too. There is no leaf-lifetime setting in the `pki` block itself; only `intermediate_lifetime`
+lives there.
 **Why not Caddy's 12-hour default.** Short public certificates exist because revocation does not
 work: CRLs and OCSP soft-fail, so a stolen key stays useful until the cert expires. That reasoning
 does not reach a host whose private key never leaves the container — anyone able to steal it already

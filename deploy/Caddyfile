@@ -20,6 +20,24 @@
 # The default is journald, which is where the rest of this stack already logs:
 #   journalctl -u caddy -f
 
+# Global options. Must be the first block in the file.
+#
+# Caddy requires the leaf lifetime to be shorter than the intermediate that
+# signs it, and the default intermediate is 7 days — so a 30-day leaf (set on
+# the issuer below) needs this raised as well, or Caddy refuses the config.
+# 8640h is 360 days.
+#
+# The CA ROOT is untouched and stays at Caddy's 10-year default. That is the one
+# trusted on each device; shortening it would mean re-trusting every phone and
+# laptop on a schedule.
+{
+	pki {
+		ca local {
+			intermediate_lifetime 8640h
+		}
+	}
+}
+
 # Plain HTTP, for one purpose: handing out the CA root (DD-41).
 #
 # This has to be HTTP. Fetching the root over HTTPS is circular — the browser
@@ -73,8 +91,19 @@ https://{$KRAM_DOMAIN} {
 	# The CA ROOT is unaffected and stays at Caddy's 10-year default. That is
 	# the one trusted on each device, and shortening it would mean re-trusting
 	# every phone and laptop on a schedule.
-	tls internal {
-		lifetime 720h
+	# `lifetime` belongs to the ISSUER, not to `tls` — `tls internal { lifetime }`
+	# fails with "unknown subdirective: lifetime", which is how this arrived in
+	# production the first time.
+	#
+	# 30 days, against a 12-hour default. Caddy's docs say not to change this
+	# without reason; the reason here is that a container which has been off for
+	# a day comes back with an expired leaf and refuses connections until it
+	# reissues. The revocation argument for short certificates does not apply to
+	# a key that never leaves this machine (DD-41).
+	tls {
+		issuer internal {
+			lifetime 720h
+		}
 	}
 
 	encode zstd gzip

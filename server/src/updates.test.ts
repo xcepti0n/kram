@@ -241,3 +241,37 @@ describe('canApply', () => {
     }
   });
 });
+
+/**
+ * The polkit subject form (DD-38).
+ *
+ * Two bugs shipped here, both of which reported a working grant as broken:
+ * treating pkcheck's exit 2 ("no authentication agent") as identical to every
+ * other failure, and passing a bare pid to --process, which the polkit manual
+ * documents as a race and says never to use.
+ */
+describe('canApply subject', () => {
+  const source = () =>
+    readFile(join(dirname(fileURLToPath(import.meta.url)), 'services', 'updates.ts'), 'utf8');
+
+  it('never passes a bare pid to --process', async () => {
+    const body = await source();
+    // The safe form is pid,start-time,uid; a lone process.pid is the racy one.
+    expect(body).not.toContain("String(process.pid)");
+    expect(body, 'should build the pid,start-time,uid triple').toContain('processSubject');
+  });
+
+  it('reads start time from /proc past the comm field', async () => {
+    const body = await source();
+    // A process name can contain spaces and brackets, so splitting the whole
+    // line misplaces every field after it.
+    expect(body).toContain("lastIndexOf(')')");
+  });
+
+  it('separates a denial from a check that could not run', async () => {
+    const body = await source();
+    const fn = body.slice(body.indexOf('export async function canApply'));
+    expect(fn).toContain('code === 1 || code === 2');
+    expect(fn, 'a broken check must not be reported as a denial').toContain('lastCheckError');
+  });
+});

@@ -874,3 +874,21 @@ scope — the Caddyfile route now serves from there too, rather than relying sol
 to keep the key unreachable.
 **Cost.** The e2e server generates a throwaway certificate so the panel's visible path is tested;
 without it the endpoint 404s and the panel hides, leaving the button uncovered.
+
+### DD-43 — pkcheck's exit codes and the only safe --process form
+**Decision.** `canApply()` passes `--process pid,start-time,uid` and treats only exit 1 and 2 as
+denials; any other failure records why the check could not answer. `update.sh` no longer verifies
+the grant at all.
+**Why.** The check installed in DD-38 reported a correctly installed rule as broken, in production,
+twice over. Exit 2 means "authentication required but no agent available", which for a shell run as
+root is the normal result whether or not the rule works — so `update.sh` printed "the polkit rule is
+installed but not granting permission" against a rule polkit had loaded without error. And bare
+`--process <pid>` is a documented race (CVE-2013-4288); the manual says never to use it, and the
+safe form needs the start time from `/proc/self/stat` and the uid.
+**Why update.sh stopped checking.** There is no cheap way from a root shell to ask whether a
+*different, future* process would be authorised. The app can ask about itself, and does, at the
+moment it decides whether to show the button. A check that cries wolf is worse than none: it teaches
+the reader to ignore warnings, which is the opposite of what DD-38 was trying to buy.
+**Cost.** `/proc/self/stat` is Linux-only, so `canApply` returns false in development on macOS —
+correct, since there is no polkit there either. Parsing it has to start after the last `)`, because
+a process name may contain spaces and brackets.

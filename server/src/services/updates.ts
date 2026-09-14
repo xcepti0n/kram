@@ -14,7 +14,7 @@
  * would have meant.
  */
 import { execFile } from 'node:child_process';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { UpdateCommit, UpdateStatus } from '@kram/shared';
@@ -69,9 +69,18 @@ function unknown(reason: string, current = 'unknown'): UpdateStatus {
  * In production the dry-run passed, the button appeared, and pressing it gave
  * "Access denied" — the guard against exactly that failure could not fail.
  *
- * `pkcheck` asks polkit the real question. If polkit is not installed at all
- * (common on a minimal container) there is no way to authorise the start, so
- * the answer is a definite no rather than an optimistic yes.
+ * `pkcheck` asks polkit the real question, with two subtleties that both bit
+ * in production:
+ *
+ *   * Exit 2 means "authentication is required but no agent is available", NOT
+ *     "denied". A rule granting Result.YES needs no agent and exits 0, so 2
+ *     genuinely does mean the start would fail here — but only 1 and 2 are
+ *     denials. 126 (bad arguments) and 127 (internal error) say the check
+ *     itself is broken, and treating those as a denial hides a bug behind a
+ *     missing button.
+ *   * `--process <pid>` alone is a documented race that the polkit manual says
+ *     never to use. The safe form is pid,start-time,uid, which this process can
+ *     assemble about itself from /proc.
  */
 export async function canApply(): Promise<boolean> {
   const installed =
@@ -82,17 +91,17 @@ export async function canApply(): Promise<boolean> {
   // Root needs no authorisation and pkcheck may not be present for it either.
   if (typeof process.getuid === 'function' && process.getuid() === 0) return true;
 
+  const subject = processSubject();
+  if (!subject) return false;
+
   try {
-    // --process with our own pid is what makes this a question about *this*
-    // caller rather than an abstract one. The unit and verb have to match the
-    // rule's lookups exactly, or a correctly installed rule reads as absent.
     await run(
       'pkcheck',
       [
         '--action-id',
         'org.freedesktop.systemd1.manage-units',
         '--process',
-        String(process.pid),
+        subject,
         '--detail',
         'unit',
         'kram-update.service',
@@ -103,9 +112,53 @@ export async function canApply(): Promise<boolean> {
       { timeout: GIT_TIMEOUT_MS },
     );
     return true;
-  } catch {
-    // Not authorised, or pkcheck is missing — either way the start would fail.
+  } catch (error) {
+    const code = (error as { code?: number }).code;
+    // 1 = not authorised, 2 = authorisation needs an agent and none is
+    // available. Both mean the start would fail, so the button stays hidden.
+    if (code === 1 || code === 2) return false;
+
+    // 126/127, ENOENT, a timeout: the check itself failed, which says nothing
+    // about the permission. Surfacing it as "no permission" is what produced a
+    // confident, wrong warning before. Report it so the reason is visible.
+    lastCheckError = `pkcheck could not answer (${describeExit(code, error)})`;
     return false;
+  }
+}
+
+/** Why the last canApply() check could not answer, if it could not. */
+let lastCheckError: string | null = null;
+
+export const lastPermissionCheckError = () => lastCheckError;
+
+function describeExit(code: number | undefined, error: unknown): string {
+  if (code === 126) return 'bad arguments';
+  if (code === 127) return 'internal polkit error';
+  const message = (error as { message?: string }).message;
+  return message ? message.split('\n')[0]! : `exit ${code ?? 'unknown'}`;
+}
+
+/**
+ * This process as `pid,start-time,uid`, the only --process form without a race.
+ *
+ * Field 22 of /proc/self/stat is starttime in clock ticks since boot. The
+ * comm field (2) can contain spaces and brackets, so the parse starts after
+ * the last ')' rather than splitting the whole line.
+ */
+function processSubject(): string | null {
+  try {
+    const stat = readFileSync('/proc/self/stat', 'utf8');
+    const after = stat.slice(stat.lastIndexOf(')') + 2).split(' ');
+    // after[0] is field 3 (state), so field 22 is at index 19.
+    const startTime = after[19];
+    if (!startTime || !/^\d+$/.test(startTime)) return null;
+    const uid = typeof process.getuid === 'function' ? process.getuid() : null;
+    if (uid === null) return null;
+    return `${process.pid},${startTime},${uid}`;
+  } catch {
+    // No /proc (macOS in development, for one). Without a safe subject there
+    // is nothing honest to ask, so the button stays hidden.
+    return null;
   }
 }
 

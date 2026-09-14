@@ -150,34 +150,28 @@ if [[ -f deploy/49-kram-update.rules ]]; then
     if ! cmp -s deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules; then
       cp deploy/49-kram-update.rules /etc/polkit-1/rules.d/49-kram-update.rules
       systemctl restart polkit >/dev/null 2>&1 || true
-      msg_ok "Update permission installed"
     fi
 
-    # Verify rather than assume: pkcheck asks polkit the same question the app
-    # will ask, as the same user. A rule that is present but not in effect
-    # (polkit not reloaded, a syntax error in the JavaScript) is invisible
-    # otherwise, and shows up only as a button that fails.
-    # Read the user from the unit rather than hardcoding it: that is the
-    # value the polkit rule has to match, so checking anything else would
-    # verify a question nobody asks.
-    SERVICE_USER="$(sed -n 's/^User=//p' "$UNIT" 2>/dev/null | head -1)"
-    SERVICE_USER="${SERVICE_USER:-kram}"
-
-    if command -v pkcheck >/dev/null 2>&1 && command -v runuser >/dev/null 2>&1; then
-      # --process "$$" would name *this* shell, which is root and would pass
-      # regardless. Inside runuser the subject has to be the runuser'd process
-      # itself, so the pid is resolved there, not here.
-      if runuser -u "$SERVICE_USER" -- sh -c 'pkcheck \
-           --action-id org.freedesktop.systemd1.manage-units \
-           --detail unit kram-update.service \
-           --detail verb start \
-           --process $$' >/dev/null 2>&1; then
-        msg_ok "Update permission verified"
-      else
-        msg_warn "the polkit rule is installed but not granting permission."
-        msg_warn "The UI's update button will fail; use this script instead."
-      fi
-    fi
+    # Installed, not verified — deliberately.
+    #
+    # The previous attempt ran `pkcheck --process $$` under runuser and called
+    # any non-zero exit a denial. Both halves were wrong:
+    #
+    #   * exit 2 means "no authentication agent available", NOT "not
+    #     authorised". A root shell has no agent, so a correctly installed rule
+    #     reported as broken — which is exactly what happened in production.
+    #   * bare `--process <pid>` is a documented race that the polkit manual
+    #     says never to use; the safe form needs pid,start-time,uid, which a
+    #     shell cannot assemble reliably for a short-lived child.
+    #
+    # A check that cries wolf is worse than no check — it teaches the reader to
+    # ignore warnings. The app asks polkit itself when rendering Settings and
+    # hides the button if the answer is no (DD-38), which is where the question
+    # can actually be asked about the right process.
+    msg_ok "Update permission installed"
+  else
+    msg_warn "polkit could not be installed; the UI cannot trigger updates."
+    msg_warn "Apply updates with this script instead."
   fi
 fi
 

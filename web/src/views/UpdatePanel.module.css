@@ -142,3 +142,32 @@
     transition: none;
   }
 }
+
+/* A quiet indicator that the update is still moving. Motion is the only honest
+   way to distinguish "working" from "stuck" while the server is unreachable. */
+.spinner {
+  display: inline-block;
+  inline-size: 11px;
+  block-size: 11px;
+  margin-inline-end: var(--space-2);
+  vertical-align: -1px;
+  border: 1.5px solid var(--border-strong);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Respect a stated preference for less motion: the text already says what is
+   happening, so the spin is decoration. */
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+    border-top-color: var(--border-strong);
+  }
+}

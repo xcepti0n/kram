@@ -892,3 +892,25 @@ the reader to ignore warnings, which is the opposite of what DD-38 was trying to
 **Cost.** `/proc/self/stat` is Linux-only, so `canApply` returns false in development on macOS —
 correct, since there is no polkit there either. Parsing it has to start after the last `)`, because
 a process name may contain spaces and brackets.
+
+### DD-44 — An unanswerable permission check shows the button, and the restart is watched
+**Decision.** When `pkcheck` cannot answer (126/127, missing binary, timeout), `canApply()` returns
+**true** rather than false. After a successful apply, the panel polls until the server has gone away
+and come back, and reports which version is running.
+**Why show the button on an unknown.** Returning false hid it, which is the same failure as a button
+that fails — just quieter. A user whose setup is fine would have no way to update and no visible
+reason why, where clicking gives a specific error from polkit's own words. Only a real denial
+(exit 1 or 2) hides it.
+**Why watch the restart.** Applying gave a toast and then two minutes of silence, during which a
+finished update and a failed one look identical. The poll waits for the server to stop answering
+*before* trusting that it is back — the first poll happens while the old process is still serving,
+so a naive health check reports success before anything has restarted. Coming back on the old commit
+is reported as a rollback, not as success.
+**Why startUpdate distinguishes its failures.** "kram-update.service is not installed" was returned
+for a permission refusal too, sending the reader after the wrong problem. The unit's presence and
+the permission are now separate messages, and systemctl's raw output — the whole command line — is
+translated rather than shown.
+**Cost.** The progress test had to be built carefully: mocking `/api/updates` to keep reporting the
+old commit means the poll always takes the rollback branch, so the test passed with or without the
+guard it existed to protect. It now re-routes mid-test to report the new commit, and fails when the
+guard is removed.

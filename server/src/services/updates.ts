@@ -76,8 +76,9 @@ function unknown(reason: string, current = 'unknown'): UpdateStatus {
  *     "denied". A rule granting Result.YES needs no agent and exits 0, so 2
  *     genuinely does mean the start would fail here — but only 1 and 2 are
  *     denials. 126 (bad arguments) and 127 (internal error) say the check
- *     itself is broken, and treating those as a denial hides a bug behind a
- *     missing button.
+ *     itself is broken. Those do NOT hide the button: a working setup with a
+ *     broken check would otherwise have no way to update and no visible
+ *     reason, which is harder to diagnose than an error on click.
  *   * `--process <pid>` alone is a documented race that the polkit manual says
  *     never to use. The safe form is pid,start-time,uid, which this process can
  *     assemble about itself from /proc.
@@ -119,10 +120,14 @@ export async function canApply(): Promise<boolean> {
     if (code === 1 || code === 2) return false;
 
     // 126/127, ENOENT, a timeout: the check itself failed, which says nothing
-    // about the permission. Surfacing it as "no permission" is what produced a
-    // confident, wrong warning before. Report it so the reason is visible.
+    // about the permission.
+    //
+    // Offer the button anyway. Hiding it would mean a user whose setup is fine
+    // has no way to update and no visible reason why — the same failure as a
+    // button that fails, just quieter and harder to diagnose. If the start is
+    // genuinely refused, /api/updates/apply reports it with polkit's own words.
     lastCheckError = `pkcheck could not answer (${describeExit(code, error)})`;
-    return false;
+    return true;
   }
 }
 
@@ -302,14 +307,56 @@ export class UpdateUnavailable extends Error {}
  * either way. Returning immediately lets the UI say "started, watch the logs".
  */
 export async function startUpdate(): Promise<void> {
-  if (!(await canApply())) {
+  const unitInstalled =
+    existsSync('/etc/systemd/system/kram-update.service') ||
+    existsSync('/lib/systemd/system/kram-update.service');
+
+  // Distinguish the two reasons this can fail. Saying "not installed" when the
+  // unit is present but polkit refuses sends the reader looking for the wrong
+  // problem — which is what the old message did.
+  if (!unitInstalled) {
     throw new UpdateUnavailable(
-      'kram-update.service is not installed, so the server cannot apply updates itself.',
+      'kram-update.service is not installed, so this server cannot apply updates itself. ' +
+        'Run deploy/update.sh from a shell instead.',
     );
   }
+
   try {
-    await run('systemctl', ['start', '--no-block', 'kram-update.service'], { timeout: GIT_TIMEOUT_MS });
+    await run('systemctl', ['start', '--no-block', 'kram-update.service'], {
+      timeout: GIT_TIMEOUT_MS,
+    });
   } catch (error) {
-    throw new UpdateUnavailable(`could not start the update: ${(error as Error).message}`);
+    throw new UpdateUnavailable(explainStartFailure(error));
   }
+}
+
+/**
+ * Turn systemctl's stderr into something worth reading.
+ *
+ * The raw message is the whole failed command plus systemd's own line, which
+ * arrived in the UI as an unreadable wall ending in "Access denied". What the
+ * reader needs is the cause and the way forward.
+ */
+function explainStartFailure(error: unknown): string {
+  const raw = [
+    (error as { stderr?: string }).stderr,
+    (error as { message?: string }).message,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (/access denied|not authorized|interactive authentication/i.test(raw)) {
+    return (
+      'the server is not permitted to start the update. The polkit rule is missing or not in ' +
+      'effect — run deploy/update.sh from a shell, which installs it.'
+    );
+  }
+
+  if (/not found|no such file/i.test(raw)) {
+    return 'kram-update.service could not be found. Run deploy/update.sh from a shell.';
+  }
+
+  // Unrecognised: pass systemd's own words, but only the first line of them.
+  const firstLine = raw.split('\n').map((l) => l.trim()).filter(Boolean).pop() ?? 'unknown error';
+  return `could not start the update — ${firstLine}`;
 }

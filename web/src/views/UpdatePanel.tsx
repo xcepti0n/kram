@@ -13,6 +13,10 @@ export function UpdatePanel() {
   const [status, setStatus] = useState<UpdateStatus | null>(null);
   const [checking, setChecking] = useState(false);
   const [applying, setApplying] = useState(false);
+  /* What to tell the user while the server is away. */
+  const [phase, setPhase] = useState<
+    'starting' | 'restarting' | 'done' | 'rolled-back' | 'timeout' | null
+  >(null);
   const toast = useToast();
 
   const check = async () => {
@@ -28,19 +32,77 @@ export function UpdatePanel() {
 
   const apply = async () => {
     setApplying(true);
+    setPhase('starting');
     try {
       await api.applyUpdate();
-      /*
-       * Deliberately left in the applying state. The server is about to
-       * rebuild and restart, so this tab will lose its connection within
-       * seconds — resetting the button would invite a second click into a
-       * server that is already going down.
-       */
-      toast.show('Update started — the app will restart in a minute or two', 'success');
+      toast.show('Update started', 'success');
+      // Stays in the applying state: the server is going down within seconds,
+      // and re-enabling the button would invite a second click into it.
+      void watchUntilBack(status?.latest ?? null);
     } catch (error) {
       toast.show(error instanceof ApiError ? error.message : 'Could not start the update', 'error');
       setApplying(false);
+      setPhase(null);
     }
+  };
+
+  /**
+   * Follow the restart so the panel can say when it is done.
+   *
+   * Without this the user gets a toast and then two minutes of silence, with no
+   * way to tell a finished update from a broken one except by reloading and
+   * guessing. The sequence is: the server stops answering (it is rebuilding),
+   * then answers again, and then reports a new commit.
+   */
+  const watchUntilBack = async (expected: string | null) => {
+    const deadline = Date.now() + 10 * 60_000;
+    let wentDown = false;
+
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, 3000));
+
+      let alive = false;
+      try {
+        const response = await fetch('/api/health', { cache: 'no-store' });
+        alive = response.ok;
+      } catch {
+        alive = false;
+      }
+
+      if (!alive) {
+        // Expected: npm ci and the build take the service down.
+        wentDown = true;
+        setPhase('restarting');
+        continue;
+      }
+
+      // Answering again. Only trust it once it has actually gone away first,
+      // or the very first poll (before systemd has stopped anything) reads as
+      // a finished update.
+      if (!wentDown) continue;
+
+      try {
+        const fresh = await api.checkUpdates();
+        if (expected === null || fresh.current === expected || fresh.state === 'up-to-date') {
+          setPhase('done');
+          setStatus(fresh);
+          setApplying(false);
+          toast.show('Update complete', 'success');
+          return;
+        }
+        // Back up but still on the old commit: the build failed and update.sh
+        // restarted the previous version, which is the rollback working.
+        setPhase('rolled-back');
+        setApplying(false);
+        toast.show('The update did not take — the previous version is running', 'error');
+        return;
+      } catch {
+        // Up but not ready to answer yet; keep waiting.
+      }
+    }
+
+    setPhase('timeout');
+    setApplying(false);
   };
 
   return (
@@ -89,7 +151,13 @@ export function UpdatePanel() {
       )}
 
       <div className={styles.actions}>
-        <button type="button" className={styles.button} onClick={check} disabled={checking || applying}>
+        <button
+          type="button"
+          className={styles.button}
+          onClick={check}
+          disabled={checking || applying}
+          data-testid="check-updates"
+        >
           {checking ? 'Checking…' : 'Check for updates'}
         </button>
 
@@ -99,6 +167,7 @@ export function UpdatePanel() {
             className={styles.primary}
             onClick={apply}
             disabled={applying}
+            data-testid="apply-update"
           >
             {applying ? 'Updating…' : 'Update now'}
           </button>
@@ -117,10 +186,34 @@ export function UpdatePanel() {
         </p>
       ) : null}
 
-      {applying ? (
-        <p className={styles.hint}>
-          The service is rebuilding and will restart. If this page stops responding, wait a minute
-          and reload. If the new version fails to start, it rolls back on its own.
+      {/* Say where the update has got to. Two minutes of silence after a click
+          is indistinguishable from a failure. */}
+      {phase === 'starting' || phase === 'restarting' ? (
+        <p className={styles.hint} data-testid="update-progress">
+          <span className={styles.spinner} aria-hidden="true" />
+          {phase === 'starting'
+            ? 'Installing dependencies and rebuilding…'
+            : 'Restarting — this page will reconnect on its own.'}
+        </p>
+      ) : null}
+
+      {phase === 'done' ? (
+        <p className={styles.hint} data-testid="update-progress">
+          Updated and running the new version.
+        </p>
+      ) : null}
+
+      {phase === 'rolled-back' ? (
+        <p className={styles.hint} data-testid="update-progress">
+          The update did not take and the previous version was restored. See{' '}
+          <code className={styles.sha}>journalctl -u kram-update</code> for why.
+        </p>
+      ) : null}
+
+      {phase === 'timeout' ? (
+        <p className={styles.hint} data-testid="update-progress">
+          Still not back after ten minutes. Check{' '}
+          <code className={styles.sha}>journalctl -u kram-update</code> in the container.
         </p>
       ) : null}
     </section>
